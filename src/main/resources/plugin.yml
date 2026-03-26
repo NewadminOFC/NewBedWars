@@ -1,0 +1,18 @@
+name: NewBedWars
+version: '${project.version}'
+main: n.plugins.newbedwars.NewBedWars
+author: NewadminOFC
+description: BedWars SOLO 1.8.8 com setup completo in-game
+depend: [Citizens]
+commands:
+  bw:
+    description: Comando principal do BedWars
+    usage: /bw
+    aliases: [bedwars]
+  lobby:
+    description: Volta para o lobby principal
+    usage: /lobby
+permissions:
+  newbedwars.admin:
+    description: Permite administrar arenas BedWars
+    default: op

@@ -1,0 +1,28 @@
+package n.plugins.newbedwars.setup;
+
+public enum SetupPointAction {
+    TEAM_SPAWN("Spawn do time", false),
+    TEAM_BED("Cama", true),
+    TEAM_IRON_GENERATOR("Gerador de ferro", true),
+    TEAM_GOLD_GENERATOR("Gerador de ouro", true),
+    TEAM_ITEM_SHOP("Loja de itens", true),
+    TEAM_UPGRADE_SHOP("Loja de upgrades", true),
+    ARENA_DIAMOND_GENERATOR("Gerador de diamante", true),
+    ARENA_EMERALD_GENERATOR("Gerador de esmeralda", true);
+
+    private final String displayName;
+    private final boolean blockRequired;
+
+    SetupPointAction(String displayName, boolean blockRequired) {
+        this.displayName = displayName;
+        this.blockRequired = blockRequired;
+    }
+
+    public String getDisplayName() {
+        return displayName;
+    }
+
+    public boolean isBlockRequired() {
+        return blockRequired;
+    }
+}

@@ -1,0 +1,44 @@
+name: example
+world: world
+ready: false
+state: WAITING
+waiting-spawn:
+  world: world
+  x: 0.5
+  y: 80.0
+  z: 0.5
+  yaw: 0.0
+  pitch: 0.0
+waiting-region:
+  pos1:
+    world: world
+    x: -5.0
+    y: 78.0
+    z: -5.0
+    yaw: 0.0
+    pitch: 0.0
+  pos2:
+    world: world
+    x: 5.0
+    y: 85.0
+    z: 5.0
+    yaw: 0.0
+    pitch: 0.0
+teams:
+  RED:
+    confirmed: false
+    spawn: null
+    bed:
+      head: null
+      foot: null
+    generators:
+      IRON: []
+      GOLD: []
+    item-shop: null
+    upgrade-shop: null
+    island-region:
+      pos1: null
+      pos2: null
+    protection-region:
+      pos1: null
+      pos2: null

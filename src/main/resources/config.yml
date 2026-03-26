@@ -1,0 +1,88 @@
+settings:
+  min-players: 2
+  max-players: 2
+  countdown-seconds: 10
+  ending-seconds: 8
+  respawn-seconds: 1
+  clear-inventories-on-join: true
+  sounds: true
+  titles: false
+  holograms: false
+  spectators-can-fly: true
+
+lobby:
+  spawn: null
+
+events:
+  diamond-tier-seconds: 300
+  bed-break-seconds: 600
+
+npc:
+  default-skin: "Notch"
+  look-close: true
+  look-close-range: 8.0
+  solo:
+    internal-name: "BedWars1v1"
+    hologram-top: "&bBedWars - %mode%"
+    hologram-bottom: "&e%playing% Jogando!"
+    hologram-top-height: 2.00
+    hologram-bottom-height: 1.74
+
+generators:
+  iron:
+    interval-seconds: 1
+    max-nearby-items: 32
+  gold:
+    interval-seconds: 4
+    max-nearby-items: 16
+  diamond:
+    interval-seconds: 10
+    max-nearby-items: 8
+  emerald:
+    interval-seconds: 15
+    max-nearby-items: 8
+
+scoreboard:
+  title: "&bBEDWARS"
+  lobby:
+    - "&7%date% | &f%online%"
+    - ""
+    - "&fModo: &b%mode%"
+    - "&fArenas prontas: &a%ready_arenas%"
+    - ""
+    - "&fbedwars.local"
+  waiting:
+    - "&7%date% | &f%online%"
+    - ""
+    - "&fArena: &b%arena%"
+    - "&fJogadores: &a%players%&7/&a%max_players%"
+    - "&fMinimo: &a%min_players%"
+    - ""
+    - "&fbedwars.local"
+  starting:
+    - "&7%date% | &f%online%"
+    - ""
+    - "&fArena: &b%arena%"
+    - "&fJogadores: &a%players%&7/&a%max_players%"
+    - "&fInicio: &a%countdown%s"
+    - "&fSeu time: %team%"
+    - ""
+    - "&fbedwars.local"
+  ingame:
+    - "&7%date% | &f%online%"
+    - ""
+    - "&fProximo evento:"
+    - "&b%next_event_name%: &a%next_event_time%"
+    - ""
+    - "%team_line_red%"
+    - "%team_line_blue%"
+    - ""
+    - "&f%arena%"
+  ending:
+    - "&7%date% | &f%online%"
+    - ""
+    - "&fArena: &b%arena%"
+    - "&fVencedor: %winner%"
+    - "&fReinicio: &a%countdown%s"
+    - ""
+    - "&fbedwars.local"
