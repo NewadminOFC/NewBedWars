@@ -23,6 +23,7 @@ O projeto foi pensado para evitar o setup manual chato por arquivo e para permit
 - [Geradores](#geradores)
 - [Scoreboard e Tablist](#scoreboard-e-tablist)
 - [Arquivos e Persistencia](#arquivos-e-persistencia)
+- [Licenca](#licenca)
 - [Estrutura do Projeto](#estrutura-do-projeto)
 - [Como Compilar](#como-compilar)
 - [Troubleshooting](#troubleshooting)
@@ -645,6 +646,20 @@ O Bukkit nao sobrescreve tudo automaticamente ao atualizar plugin. Entao, se uma
 
 1. copie a secao nova manualmente do projeto
 2. ou apague o arquivo antigo para o plugin gerar um novo
+
+## Licenca
+
+Este projeto usa uma licenca propria em portugues, disponivel em [LICENSE](C:/Users/picha/Documents/backup/NewBedWars/LICENSE).
+
+Em resumo:
+
+- voce pode usar o plugin normalmente
+- voce pode distribuir copias nao modificadas
+- voce pode fazer integracoes externas, addons, wrappers e automacoes
+- voce nao pode modificar o codigo-fonte do projeto sem permissao
+- voce nao pode redistribuir jar ou source alterado sem permissao
+
+Se quiser termos diferentes, permissao comercial ou autorizacao para modificar e redistribuir, o contato deve ser feito diretamente com o autor.
 
 ## Estrutura do Projeto
 
