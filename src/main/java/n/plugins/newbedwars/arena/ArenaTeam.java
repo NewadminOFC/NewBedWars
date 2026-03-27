@@ -216,4 +216,28 @@ public class ArenaTeam {
         }
         return "§cFaltando: " + Arrays.toString(missing.toArray()).replace("[", "").replace("]", "");
     }
+    public void copySetupFrom(ArenaTeam source) {
+        if (source == null) {
+            return;
+        }
+
+        this.spawnLocation = source.getSpawnLocation();
+        BedData sourceBed = source.getBedData();
+        this.bedData = sourceBed == null ? null : new BedData(sourceBed.getHead(), sourceBed.getFoot());
+        this.itemShopLocation = source.getItemShopLocation();
+        this.upgradeShopLocation = source.getUpgradeShopLocation();
+        this.islandRegion = source.getIslandRegion() == null ? null : new CuboidRegion(source.getIslandRegion().getPos1(), source.getIslandRegion().getPos2());
+        this.protectionRegion = source.getProtectionRegion() == null ? null : new CuboidRegion(source.getProtectionRegion().getPos1(), source.getProtectionRegion().getPos2());
+        this.confirmed = source.isConfirmed();
+
+        for (GeneratorType type : GeneratorType.values()) {
+            List<GeneratorPoint> targetPoints = generators.get(type);
+            targetPoints.clear();
+            for (GeneratorPoint point : source.getGenerators(type)) {
+                targetPoints.add(new GeneratorPoint(point.getType(), point.getLocation(), point.getOwner()));
+            }
+        }
+
+        resetRuntime();
+    }
 }

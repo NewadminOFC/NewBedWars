@@ -10,23 +10,59 @@ settings:
   holograms: false
   spectators-can-fly: true
 
-lobby:
-  spawn: null
+lobby: {}
 
 events:
   diamond-tier-seconds: 300
   bed-break-seconds: 600
 
 npc:
-  default-skin: "Notch"
+  default-skin: Notch
   look-close: true
   look-close-range: 8.0
   solo:
-    internal-name: "BedWars1v1"
+    internal-name: BedWars1v1
     hologram-top: "&bBedWars - %mode%"
     hologram-bottom: "&e%playing% Jogando!"
-    hologram-top-height: 2.00
+    hologram-top-height: 2.0
     hologram-bottom-height: 1.74
+  item-shop:
+    hologram-top: "&b&lLOJA"
+    hologram-bottom: "&eClique para abrir"
+    hologram-top-height: 1.18
+    hologram-bottom-height: 0.9
+  upgrade-shop:
+    hologram-top: "&b&lMELHORIAS"
+    hologram-bottom: "&eClique para abrir"
+    hologram-top-height: 1.18
+    hologram-bottom-height: 0.9
+
+pre-game-items:
+  team-selector:
+    slot: 0
+    permission: "newbedwars.teamselect"
+    name: "&bEscolher Time"
+    head-owner-default: "MHF_Question"
+    head-owner-red: "MHF_Red"
+    head-owner-blue: "MHF_Blue"
+    no-permission-message: "%prefix%&cVoce nao tem permissao para escolher o time."
+    lore:
+      - "&7Escolha a cor desejada"
+      - "&7para a partida."
+      - ""
+      - "&fEscolha atual: %team%"
+      - "&7Quem nao escolher vai"
+      - "&7para time aleatorio."
+      - ""
+      - "&eClique para abrir"
+  leave-arena:
+    slot: 8
+    name: "&cVoltar ao Lobby"
+    lore:
+      - "&7Saia da fila atual"
+      - "&7e volte para o lobby."
+      - ""
+      - "&eClique para sair"
 
 generators:
   iron:
@@ -42,15 +78,52 @@ generators:
     interval-seconds: 15
     max-nearby-items: 8
 
+special-items:
+  fireball:
+    speed: 2.75
+    yield: 2.2
+    incendiary: false
+    knockback-horizontal: 3.1
+    knockback-vertical: 0.8
+    knockback-radius: 5.2
+    close-distance: 1.85
+    far-horizontal: 2.35
+    far-vertical: 0.34
+    self-horizontal-multiplier: 1.12
+    self-vertical-multiplier: 1.08
+    max-velocity: 3.95
+  tnt:
+    fuse-ticks: 40
+    yield: 4.0
+    incendiary: false
+    throw-horizontal: 0.0
+    throw-vertical: 0.0
+    knockback-horizontal: 2.45
+    knockback-vertical: 0.78
+    knockback-radius: 5.6
+    close-distance: 2.15
+    top-radius: 1.15
+    top-horizontal: 0.14
+    top-vertical: 1.15
+    front-horizontal: 2.85
+    front-vertical: 0.40
+    max-velocity: 3.25
+    chain-radius: 3.2
+    chain-horizontal: 0.70
+    chain-vertical: 0.10
+    chain-max-velocity: 0.95
+    timer-enabled: true
+    timer-format: "%color%%seconds%s"
+
 scoreboard:
-  title: "&bBEDWARS"
+  title: "&b&lBEDWARS"
   lobby:
     - "&7%date% | &f%online%"
     - ""
     - "&fModo: &b%mode%"
     - "&fArenas prontas: &a%ready_arenas%"
     - ""
-    - "&fbedwars.local"
+    - "&fnewplugins.com"
   waiting:
     - "&7%date% | &f%online%"
     - ""
@@ -58,7 +131,7 @@ scoreboard:
     - "&fJogadores: &a%players%&7/&a%max_players%"
     - "&fMinimo: &a%min_players%"
     - ""
-    - "&fbedwars.local"
+    - "&fnewplugins.com"
   starting:
     - "&7%date% | &f%online%"
     - ""
@@ -78,6 +151,7 @@ scoreboard:
     - "%team_line_blue%"
     - ""
     - "&f%arena%"
+    - "&fnewplugins.com"
   ending:
     - "&7%date% | &f%online%"
     - ""
@@ -85,4 +159,44 @@ scoreboard:
     - "&fVencedor: %winner%"
     - "&fReinicio: &a%countdown%s"
     - ""
-    - "&fbedwars.local"
+    - "&fnewplugins.com"
+
+tablist:
+  enabled: true
+  only-ingame: true
+  header:
+    - "&b&lBEDWARS"
+    - "&fModo: &b%mode%"
+    - ""
+  footer:
+    - ""
+    - "&fOnline: &b%online%"
+    - "&fArena: &b%arena%"
+    - "&fStatus: &b%status%"
+    - "&fSeu time: %team%"
+  player-list:
+    lobby:
+      order: "90"
+      prefix: "&7"
+      suffix: ""
+    other-arena:
+      order: "70"
+      prefix: "&7"
+      suffix: ""
+    same-arena:
+      spectator:
+        order: "80"
+        prefix: "&7[X] &7"
+        suffix: ""
+      red:
+        order: "10"
+        prefix: "&c[V] &c"
+        suffix: ""
+      blue:
+        order: "20"
+        prefix: "&b[A] &b"
+        suffix: ""
+      default:
+        order: "30"
+        prefix: "&f[?] &f"
+        suffix: ""

@@ -16,3 +16,6 @@ permissions:
   newbedwars.admin:
     description: Permite administrar arenas BedWars
     default: op
+  newbedwars.teamselect:
+    description: Permite escolher a cor do time no lobby de espera
+    default: op

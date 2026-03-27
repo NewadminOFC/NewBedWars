@@ -26,3 +26,6 @@ out/
 # OS files
 .DS_Store
 Thumbs.db
+
+# Tools & Compiled classes
+.tools/

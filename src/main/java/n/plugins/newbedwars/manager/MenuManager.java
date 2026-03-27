@@ -10,12 +10,16 @@ import n.plugins.newbedwars.arena.TeamColor;
 import n.plugins.newbedwars.menu.ArenaSelectorMenu;
 import n.plugins.newbedwars.menu.BaseMenu;
 import n.plugins.newbedwars.menu.ItemShopMenu;
+import n.plugins.newbedwars.menu.SetupNpcMenu;
 import n.plugins.newbedwars.menu.SetupConfirmMenu;
 import n.plugins.newbedwars.menu.SetupMainMenu;
 import n.plugins.newbedwars.menu.SoloQueueMenu;
+import n.plugins.newbedwars.menu.TeamSelectorMenu;
 import n.plugins.newbedwars.menu.TeamSetupMenu;
 import n.plugins.newbedwars.menu.UpgradeShopMenu;
+import n.plugins.newbedwars.npc.BedWarsNpcType;
 import org.bukkit.entity.Player;
+import org.bukkit.inventory.Inventory;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.event.inventory.InventoryDragEvent;
@@ -35,8 +39,7 @@ public class MenuManager {
     }
 
     public boolean isViewingMenu(Player player) {
-        BaseMenu menu = openMenus.get(player.getUniqueId());
-        return menu != null && player.getOpenInventory().getTopInventory().getHolder() == menu;
+        return resolveMenu(player, player.getOpenInventory().getTopInventory()) != null;
     }
 
     public void openSetupMainMenu(Player player, Arena arena) {
@@ -49,6 +52,10 @@ public class MenuManager {
 
     public void openSetupConfirmMenu(Player player, Arena arena) {
         new SetupConfirmMenu(plugin, arena).open(player);
+    }
+
+    public void openSetupNpcMenu(Player player, Arena arena, TeamColor color, BedWarsNpcType type) {
+        new SetupNpcMenu(plugin, arena, color, type).open(player);
     }
 
     public void openItemShop(Player player) {
@@ -67,30 +74,33 @@ public class MenuManager {
         new ArenaSelectorMenu(plugin).open(player);
     }
 
+    public void openTeamSelectorMenu(Player player, Arena arena) {
+        new TeamSelectorMenu(plugin, arena).open(player);
+    }
+
     public boolean handleClick(InventoryClickEvent event) {
         if (!(event.getWhoClicked() instanceof Player)) {
             return false;
         }
 
         Player player = (Player) event.getWhoClicked();
-        BaseMenu menu = openMenus.get(player.getUniqueId());
+        Inventory topInventory = event.getView().getTopInventory();
+        BaseMenu menu = resolveMenu(player, topInventory);
         if (menu == null) {
-            return false;
-        }
-
-        if (event.getView().getTopInventory().getHolder() != menu) {
             return false;
         }
 
         event.setCancelled(true);
 
         int rawSlot = event.getRawSlot();
-        int topSize = event.getView().getTopInventory().getSize();
+        int topSize = topInventory.getSize();
         if (rawSlot < 0 || rawSlot >= topSize || event.getClickedInventory() == null) {
+            forceInventorySync(player);
             return true;
         }
 
         menu.handleClick(player, rawSlot, event.getClick());
+        forceInventorySync(player);
         return true;
     }
 
@@ -100,25 +110,24 @@ public class MenuManager {
         }
 
         Player player = (Player) event.getWhoClicked();
-        BaseMenu menu = openMenus.get(player.getUniqueId());
+        Inventory topInventory = event.getView().getTopInventory();
+        BaseMenu menu = resolveMenu(player, topInventory);
         if (menu == null) {
             return false;
         }
 
-        if (event.getView().getTopInventory().getHolder() != menu) {
-            return false;
-        }
-
         Set<Integer> rawSlots = event.getRawSlots();
-        int topSize = event.getView().getTopInventory().getSize();
+        int topSize = topInventory.getSize();
         for (Integer rawSlot : rawSlots) {
             if (rawSlot != null && rawSlot.intValue() < topSize) {
                 event.setCancelled(true);
+                forceInventorySync(player);
                 return true;
             }
         }
 
         event.setCancelled(true);
+        forceInventorySync(player);
         return true;
     }
 
@@ -129,8 +138,50 @@ public class MenuManager {
 
         Player player = (Player) event.getPlayer();
         BaseMenu current = openMenus.get(player.getUniqueId());
-        if (current != null && event.getInventory().getHolder() == current) {
+        if (current != null && matchesMenu(current, event.getInventory())) {
             openMenus.remove(player.getUniqueId());
         }
+    }
+
+    private boolean matchesMenu(BaseMenu menu, Inventory inventory) {
+        if (menu == null || inventory == null) {
+            return false;
+        }
+
+        return menu.isInventory(inventory) || inventory.getHolder() == menu;
+    }
+
+    private BaseMenu resolveMenu(Player player, Inventory topInventory) {
+        if (player == null || topInventory == null) {
+            return null;
+        }
+
+        BaseMenu tracked = openMenus.get(player.getUniqueId());
+        if (matchesMenu(tracked, topInventory)) {
+            return tracked;
+        }
+
+        if (topInventory.getHolder() instanceof BaseMenu) {
+            BaseMenu holderMenu = (BaseMenu) topInventory.getHolder();
+            openMenus.put(player.getUniqueId(), holderMenu);
+            return holderMenu;
+        }
+
+        return null;
+    }
+
+    private void forceInventorySync(final Player player) {
+        if (player == null) {
+            return;
+        }
+
+        plugin.getServer().getScheduler().runTask(plugin, new Runnable() {
+            @Override
+            public void run() {
+                if (player.isOnline()) {
+                    player.updateInventory();
+                }
+            }
+        });
     }
 }

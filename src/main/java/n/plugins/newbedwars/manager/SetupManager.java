@@ -10,9 +10,11 @@ import n.plugins.newbedwars.arena.ArenaTeam;
 import n.plugins.newbedwars.arena.BedData;
 import n.plugins.newbedwars.arena.GeneratorType;
 import n.plugins.newbedwars.arena.TeamColor;
+import n.plugins.newbedwars.npc.BedWarsNpcType;
 import n.plugins.newbedwars.setup.SetupPointAction;
 import n.plugins.newbedwars.setup.SetupRegionAction;
 import n.plugins.newbedwars.setup.SetupSession;
+import n.plugins.newbedwars.util.ChatUtil;
 import n.plugins.newbedwars.util.BedUtil;
 import n.plugins.newbedwars.util.CuboidRegion;
 import n.plugins.newbedwars.util.ItemBuilder;
@@ -327,6 +329,46 @@ public class SetupManager {
         if (arena != null && session.isUnlockedMainMenu()) {
             plugin.getMenuManager().openSetupMainMenu(player, arena);
         }
+    }
+
+    public boolean canEditNpc(Player player, Arena arena) {
+        SetupSession session = getSession(player);
+        return session != null && arena != null && session.getArenaName().equalsIgnoreCase(arena.getName());
+    }
+
+    public void removeTeamNpc(Player player, Arena arena, TeamColor color, BedWarsNpcType type) {
+        if (player == null || arena == null || color == null || type == null) {
+            return;
+        }
+
+        ArenaTeam team = arena.getTeam(color);
+        if (team == null) {
+            return;
+        }
+
+        boolean changed = false;
+        boolean wasConfirmed = team.isConfirmed();
+        if (type == BedWarsNpcType.ITEM_SHOP && team.getItemShopLocation() != null) {
+            team.setItemShopLocation(null);
+            changed = true;
+        } else if (type == BedWarsNpcType.UPGRADE_SHOP && team.getUpgradeShopLocation() != null) {
+            team.setUpgradeShopLocation(null);
+            changed = true;
+        }
+
+        if (!changed) {
+            plugin.getMenuManager().openTeamSetupMenu(player, arena, color);
+            return;
+        }
+
+        arena.setReady(false);
+        plugin.getArenaManager().saveArena(arena);
+        plugin.getNpcManager().refreshArenaShopNpcs(arena);
+        player.sendMessage(plugin.getMessageManager().get("prefix") + ChatUtil.color("&eNPC de &f" + type.getDisplayName() + " &eremovido do time " + color.getColoredName() + "&e."));
+        if (wasConfirmed) {
+            plugin.getMessageManager().send(player, "setup.changed-team-setting", Collections.singletonMap("team", team.getColor().getColoredName()));
+        }
+        plugin.getMenuManager().openTeamSetupMenu(player, arena, color);
     }
 
     private boolean hasName(ItemStack itemStack, String expected) {

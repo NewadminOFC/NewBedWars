@@ -45,7 +45,8 @@ setup:
   changed-team-setting: "%prefix%&eO time %team% foi marcado como pendente novamente."
 
 game:
-  joined: "%prefix%&aVoce entrou na arena &f%arena% &acomo %team%&a."
+  joined: "%prefix%&aVoce entrou na arena &f%arena%&a."
+  joined-waiting: "%prefix%&aVoce entrou na arena &f%arena%&a."
   left: "%prefix%&eVoce saiu da arena."
   join-broadcast: "%prefix%&f%player% &7entrou na arena. &f(%players%/%max_players%)"
   leave-broadcast: "%prefix%&f%player% &7saiu da arena. &f(%players%/%max_players%)"
@@ -56,6 +57,9 @@ game:
   countdown-cancelled: "%prefix%&cContagem cancelada por falta de jogadores."
   game-started: "%prefix%&aA partida comecou."
   team-assigned: "%prefix%&aVoce foi enviado para o time %team%&a."
+  team-selector-selected: "%prefix%&aVoce escolheu o time %team%&a."
+  team-selector-already: "%prefix%&eVoce ja esta no time %team%&e."
+  team-selector-occupied: "%prefix%&cO time %team% &cja esta ocupado."
   bed-destroyed: "%prefix%&cA cama do time %team% &cfoi destruida por &f%player%&c."
   your-bed-destroyed: "%prefix%&cSua cama foi destruida. Agora voce esta em morte final."
   death-respawn: "%prefix%&aVoce vai respawnar porque sua cama ainda existe."

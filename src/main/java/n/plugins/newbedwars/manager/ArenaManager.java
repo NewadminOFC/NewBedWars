@@ -2,8 +2,10 @@ package n.plugins.newbedwars.manager;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import n.plugins.newbedwars.NewBedWars;
@@ -24,24 +26,33 @@ import org.bukkit.configuration.file.YamlConfiguration;
 public class ArenaManager {
 
     private final NewBedWars plugin;
-    private final Map<String, Arena> arenas;
+    private final Map<String, Arena> configuredArenas;
+    private final Map<String, Arena> runtimeArenas;
     private final Map<UUID, String> playerArenas;
+    private long runtimeSequence;
 
     public ArenaManager(NewBedWars plugin) {
         this.plugin = plugin;
-        this.arenas = new LinkedHashMap<String, Arena>();
+        this.configuredArenas = new LinkedHashMap<String, Arena>();
+        this.runtimeArenas = new LinkedHashMap<String, Arena>();
         this.playerArenas = new LinkedHashMap<UUID, String>();
+        this.runtimeSequence = 0L;
     }
 
     public Arena createArena(String name, String worldName) {
         Arena arena = new Arena(name, worldName);
-        arenas.put(name.toLowerCase(), arena);
+        configuredArenas.put(name.toLowerCase(), arena);
         saveArena(arena);
         return arena;
     }
 
     public void deleteArena(String name) {
-        arenas.remove(name.toLowerCase());
+        Arena arena = getConfiguredArena(name);
+        if (arena != null) {
+            removeRuntimeArenasForTemplate(arena.getTemplateName());
+        }
+
+        configuredArenas.remove(name.toLowerCase());
         File file = new File(plugin.getDataFolder(), "arenas/" + name + ".yml");
         if (file.exists()) {
             file.delete();
@@ -49,11 +60,33 @@ public class ArenaManager {
     }
 
     public Arena getArena(String name) {
-        return name == null ? null : arenas.get(name.toLowerCase());
+        if (name == null) {
+            return null;
+        }
+
+        Arena configured = configuredArenas.get(name.toLowerCase());
+        if (configured != null) {
+            return configured;
+        }
+        return runtimeArenas.get(name.toLowerCase());
+    }
+
+    public Arena getConfiguredArena(String name) {
+        return name == null ? null : configuredArenas.get(name.toLowerCase());
+    }
+
+    public Collection<Arena> getConfiguredArenas() {
+        return new ArrayList<Arena>(configuredArenas.values());
+    }
+
+    public Collection<Arena> getRuntimeArenas() {
+        return new ArrayList<Arena>(runtimeArenas.values());
     }
 
     public Collection<Arena> getArenas() {
-        return arenas.values();
+        List<Arena> arenas = new ArrayList<Arena>(configuredArenas.values());
+        arenas.addAll(runtimeArenas.values());
+        return arenas;
     }
 
     public Arena getArenaByPlayer(UUID uniqueId) {
@@ -62,6 +95,10 @@ public class ArenaManager {
     }
 
     public void setPlayerArena(UUID uniqueId, Arena arena) {
+        if (uniqueId == null || arena == null) {
+            return;
+        }
+
         playerArenas.put(uniqueId, arena.getName());
     }
 
@@ -69,9 +106,82 @@ public class ArenaManager {
         playerArenas.remove(uniqueId);
     }
 
+    public Arena resolveJoinableArena(Arena template, int maxPlayers) {
+        if (template == null) {
+            return null;
+        }
+
+        Arena best = null;
+        for (Arena arena : runtimeArenas.values()) {
+            if (!arena.getTemplateName().equalsIgnoreCase(template.getTemplateName())) {
+                continue;
+            }
+            if (arena.getState() != ArenaState.WAITING && arena.getState() != ArenaState.STARTING) {
+                continue;
+            }
+            if (arena.isFull(maxPlayers)) {
+                continue;
+            }
+
+            if (best == null || arena.getPlayerCount() > best.getPlayerCount()) {
+                best = arena;
+            }
+        }
+
+        if (best != null) {
+            return best;
+        }
+
+        return createRuntimeArena(template);
+    }
+
+    public Arena createRuntimeArena(Arena template) {
+        if (template == null) {
+            return null;
+        }
+
+        runtimeSequence++;
+        String runtimeName = template.getTemplateName() + "__instance_" + System.currentTimeMillis() + "_" + runtimeSequence;
+        Arena runtimeArena = template.createRuntimeCopy(runtimeName);
+        runtimeArenas.put(runtimeName.toLowerCase(), runtimeArena);
+        return runtimeArena;
+    }
+
+    public void removeRuntimeArena(Arena arena) {
+        if (arena == null || !arena.isRuntimeInstance()) {
+            return;
+        }
+
+        runtimeArenas.remove(arena.getName().toLowerCase());
+    }
+
+    public int countPlayersForTemplate(String templateName) {
+        int total = 0;
+        for (Arena arena : runtimeArenas.values()) {
+            if (arena.getTemplateName().equalsIgnoreCase(templateName)) {
+                total += arena.getPlayerCount();
+            }
+        }
+        return total;
+    }
+
+    public int countOpenInstances(String templateName) {
+        int total = 0;
+        for (Arena arena : runtimeArenas.values()) {
+            if (!arena.getTemplateName().equalsIgnoreCase(templateName)) {
+                continue;
+            }
+            if (arena.getState() == ArenaState.WAITING || arena.getState() == ArenaState.STARTING) {
+                total++;
+            }
+        }
+        return total;
+    }
+
     public void loadArenas() {
-        // Cada arena e carregada de um YML proprio para manter suporte a multiplos mapas.
-        arenas.clear();
+        configuredArenas.clear();
+        runtimeArenas.clear();
+        playerArenas.clear();
         File folder = new File(plugin.getDataFolder(), "arenas");
         if (!folder.exists()) {
             folder.mkdirs();
@@ -173,18 +283,21 @@ public class ArenaManager {
             }
 
             arena.setReady(configuration.getBoolean("ready", false));
-            arenas.put(name.toLowerCase(), arena);
+            configuredArenas.put(name.toLowerCase(), arena);
         }
     }
 
     public void saveAllArenas() {
-        for (Arena arena : arenas.values()) {
+        for (Arena arena : configuredArenas.values()) {
             saveArena(arena);
         }
     }
 
     public void saveArena(Arena arena) {
-        // O arquivo da arena guarda apenas dados persistentes de setup, nunca runtime da partida.
+        if (arena == null || arena.isRuntimeInstance()) {
+            return;
+        }
+
         File file = new File(plugin.getDataFolder(), "arenas/" + arena.getName() + ".yml");
         FileConfiguration configuration = new YamlConfiguration();
 
@@ -249,6 +362,24 @@ public class ArenaManager {
             configuration.save(file);
         } catch (IOException exception) {
             exception.printStackTrace();
+        }
+    }
+
+    private void removeRuntimeArenasForTemplate(String templateName) {
+        List<Arena> toRemove = new ArrayList<Arena>();
+        for (Arena arena : runtimeArenas.values()) {
+            if (arena.getTemplateName().equalsIgnoreCase(templateName)) {
+                toRemove.add(arena);
+            }
+        }
+
+        for (Arena arena : toRemove) {
+            for (UUID uniqueId : new ArrayList<UUID>(arena.getPlayers())) {
+                clearPlayerArena(uniqueId);
+            }
+            plugin.getNpcManager().clearArenaShopNpcs(arena);
+            plugin.getWorldCloneManager().destroyClone(arena);
+            runtimeArenas.remove(arena.getName().toLowerCase());
         }
     }
 }

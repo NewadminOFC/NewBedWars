@@ -13,6 +13,7 @@ import n.plugins.newbedwars.arena.ArenaState;
 import n.plugins.newbedwars.arena.ArenaTeam;
 import n.plugins.newbedwars.arena.TeamColor;
 import n.plugins.newbedwars.model.PlayerSnapshot;
+import n.plugins.newbedwars.util.ItemBuilder;
 import n.plugins.newbedwars.util.ChatUtil;
 import n.plugins.newbedwars.util.CuboidRegion;
 import org.bukkit.Bukkit;
@@ -23,6 +24,7 @@ import org.bukkit.Sound;
 import org.bukkit.entity.Player;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.player.PlayerRespawnEvent;
+import org.bukkit.inventory.ItemStack;
 import org.bukkit.potion.PotionEffect;
 
 public class GameManager {
@@ -84,7 +86,7 @@ public class GameManager {
             taskId = -1;
         }
 
-        for (Arena arena : plugin.getArenaManager().getArenas()) {
+        for (Arena arena : new ArrayList<Arena>(plugin.getArenaManager().getRuntimeArenas())) {
             resetArena(arena);
         }
     }
@@ -97,101 +99,113 @@ public class GameManager {
         return uniqueId != null && pendingRespawns.containsKey(uniqueId);
     }
 
-    public void joinArena(Player player, Arena arena) {
-        if (plugin.getArenaManager().getArenaByPlayer(player.getUniqueId()) != null) {
-            plugin.getMessageManager().send(player, "general.already-in-arena");
+    public void giveWaitingLobbyItems(Player player) {
+        if (player == null) {
             return;
         }
 
-        if (!arena.isReady()) {
-            plugin.getMessageManager().send(player, "game.arena-not-ready");
+        Arena arena = plugin.getArenaManager().getArenaByPlayer(player.getUniqueId());
+        if (!isPreGameArena(arena)) {
             return;
         }
 
-        if (arena.getState() != ArenaState.WAITING && arena.getState() != ArenaState.STARTING) {
-            plugin.getMessageManager().send(player, "game.arena-running");
-            return;
-        }
+        int leaveSlot = resolveHotbarSlot("pre-game-items.leave-arena.slot", 8);
+        player.getInventory().setItem(leaveSlot, createLeaveArenaItem());
 
-        int maxPlayers = getArenaCapacity();
-        if (arena.isFull(maxPlayers)) {
-            plugin.getMessageManager().send(player, "game.arena-full");
-            return;
-        }
-
-        if (!plugin.getWorldCloneManager().ensureClone(arena)) {
-            player.sendMessage(plugin.getMessageManager().get("prefix") + ChatUtil.color("&cNao foi possivel preparar o clone do mapa desta arena."));
-            return;
-        }
-
-        snapshots.put(player.getUniqueId(), PlayerSnapshot.capture(player));
-        preparePlayer(player);
-
-        arena.addPlayer(player.getUniqueId());
-        plugin.getArenaManager().setPlayerArena(player.getUniqueId(), arena);
-
-        TeamColor color = plugin.getTeamManager().assignNextAvailableTeam(arena, player.getUniqueId());
-        if (color == null) {
-            plugin.getArenaManager().clearPlayerArena(player.getUniqueId());
-            arena.removePlayer(player.getUniqueId());
-            restorePlayer(player);
-            plugin.getMessageManager().send(player, "game.arena-full");
-            return;
-        }
-
-        Location joinLocation = resolveLobbySpawn(arena);
-        if (joinLocation != null) {
-            teleportSafely(player, joinLocation);
-        }
-
-        plugin.getMessageManager().send(player, "game.joined", placeholders(
-            "arena", arena.getName(),
-            "team", color.getColoredName()
-        ));
-        plugin.getMessageManager().send(player, "game.team-assigned", Collections.singletonMap("team", color.getColoredName()));
-        broadcast(arena, "game.join-broadcast", placeholders(
-            "player", player.getName(),
-            "players", String.valueOf(arena.getPlayerCount()),
-            "max_players", String.valueOf(maxPlayers)
-        ));
-
-        if (arena.getState() == ArenaState.WAITING && arena.getPlayerCount() >= getRequiredPlayersToStart()) {
-            arena.setState(ArenaState.STARTING);
-            arena.setCountdown(getStartingCountdown());
-        }
+        int selectorSlot = resolveHotbarSlot("pre-game-items.team-selector.slot", 0);
+        player.getInventory().setItem(selectorSlot, createTeamSelectorItem(arena, player.getUniqueId()));
+        player.updateInventory();
     }
 
-    public void quickJoin(Player player) {
-        Arena arena = findBestJoinableArena();
+    public boolean handleWaitingLobbyItemUse(Player player, ItemStack item) {
+        if (player == null || item == null) {
+            return false;
+        }
+
+        Arena arena = plugin.getArenaManager().getArenaByPlayer(player.getUniqueId());
+        if (!isPreGameArena(arena) || arena.getSpectators().contains(player.getUniqueId())) {
+            return false;
+        }
+
+        if (item.getType() == Material.BED) {
+            player.closeInventory();
+            leaveArena(player, true);
+            return true;
+        }
+
+        if (item.getType() == Material.WOOL || item.getType() == Material.SKULL_ITEM) {
+            if (!hasTeamSelectorAccess(player)) {
+                sendTeamSelectorNoPermission(player);
+                return true;
+            }
+
+            plugin.getMenuManager().openTeamSelectorMenu(player, arena);
+            return true;
+        }
+
+        return false;
+    }
+
+    public void joinArena(Player player, Arena arena) {
         if (arena == null) {
             plugin.getMessageManager().send(player, "game.no-arena-available");
             return;
         }
 
-        joinArena(player, arena);
+        if (plugin.getArenaManager().getArenaByPlayer(player.getUniqueId()) != null) {
+            plugin.getMessageManager().send(player, "general.already-in-arena");
+            return;
+        }
+
+        if (!arena.isRuntimeInstance()) {
+            if (!arena.isReady()) {
+                plugin.getMessageManager().send(player, "game.arena-not-ready");
+                return;
+            }
+
+            arena = plugin.getArenaManager().resolveJoinableArena(arena, getArenaCapacity());
+            if (arena == null) {
+                plugin.getMessageManager().send(player, "game.no-arena-available");
+                return;
+            }
+        }
+
+        joinRuntimeArena(player, arena);
+    }
+
+    public void quickJoin(Player player) {
+        Arena runtimeArena = findBestRuntimeArena();
+        if (runtimeArena != null) {
+            joinRuntimeArena(player, runtimeArena);
+            return;
+        }
+
+        Arena template = findBestTemplateArena();
+        if (template == null) {
+            plugin.getMessageManager().send(player, "game.no-arena-available");
+            return;
+        }
+
+        joinArena(player, template);
     }
 
     public List<Arena> getJoinableArenas() {
         List<Arena> arenas = new ArrayList<Arena>();
-        int maxPlayers = getArenaCapacity();
-
-        for (Arena arena : plugin.getArenaManager().getArenas()) {
-            if (!arena.isReady()) {
-                continue;
+        for (Arena arena : plugin.getArenaManager().getConfiguredArenas()) {
+            if (arena.isReady()) {
+                arenas.add(arena);
             }
-            if (arena.getState() != ArenaState.WAITING && arena.getState() != ArenaState.STARTING) {
-                continue;
-            }
-            if (arena.isFull(maxPlayers)) {
-                continue;
-            }
-            arenas.add(arena);
         }
 
         Collections.sort(arenas, new Comparator<Arena>() {
             @Override
             public int compare(Arena first, Arena second) {
-                return Integer.compare(first.getPlayerCount(), second.getPlayerCount());
+                int firstPlayers = plugin.getArenaManager().countPlayersForTemplate(first.getTemplateName());
+                int secondPlayers = plugin.getArenaManager().countPlayersForTemplate(second.getTemplateName());
+                if (firstPlayers != secondPlayers) {
+                    return Integer.compare(secondPlayers, firstPlayers);
+                }
+                return first.getDisplayName().compareToIgnoreCase(second.getDisplayName());
             }
         });
         return arenas;
@@ -230,10 +244,7 @@ public class GameManager {
         }
 
         if (!wasIngame && arena.getPlayerCount() == 0) {
-            arena.clearSnapshots();
-            arena.clearPlacedBlocks();
-            plugin.getWorldCloneManager().destroyClone(arena);
-            plugin.getNpcManager().refreshArenaShopNpcs(arena);
+            cleanupEmptyArena(arena);
         }
     }
 
@@ -374,7 +385,7 @@ public class GameManager {
         arena.setEndCountdown(plugin.getConfig().getInt("settings.ending-seconds", 8));
 
         if (winner != null) {
-            broadcast(arena, "game.winner", placeholders("team", winner.getColoredName(), "arena", arena.getName()));
+            broadcast(arena, "game.winner", placeholders("team", winner.getColoredName(), "arena", arena.getDisplayName()));
         } else {
             broadcast(arena, "game.draw", Collections.<String, String>emptyMap());
         }
@@ -403,23 +414,30 @@ public class GameManager {
         arena.getPlayers().clear();
         arena.getSpectators().clear();
         arena.getPlayerTeams().clear();
+        arena.clearArmorTiers();
         arena.setCountdown(0);
         arena.setElapsedTime(0);
         arena.setEndCountdown(0);
         arena.setState(ArenaState.WAITING);
         arena.clearPlacedBlocks();
+        plugin.getNpcManager().clearArenaShopNpcs(arena);
         plugin.getWorldCloneManager().destroyClone(arena);
-        plugin.getNpcManager().refreshArenaShopNpcs(arena);
 
         for (ArenaTeam team : arena.getTeams().values()) {
             team.resetRuntime();
         }
+
+        if (arena.isRuntimeInstance()) {
+            plugin.getArenaManager().removeRuntimeArena(arena);
+        } else {
+            plugin.getNpcManager().refreshArenaShopNpcs(arena);
+        }
     }
 
     private void tickArenas() {
-        for (Arena arena : plugin.getArenaManager().getArenas()) {
+        for (Arena arena : new ArrayList<Arena>(plugin.getArenaManager().getRuntimeArenas())) {
             if (arena.getState() == ArenaState.WAITING) {
-                if (arena.isReady() && arena.getPlayerCount() >= getRequiredPlayersToStart()) {
+                if (arena.getPlayerCount() >= getRequiredPlayersToStart()) {
                     arena.setState(ArenaState.STARTING);
                     arena.setCountdown(getStartingCountdown());
                 }
@@ -443,6 +461,9 @@ public class GameManager {
             arena.setState(ArenaState.WAITING);
             arena.setCountdown(0);
             broadcast(arena, "game.countdown-cancelled", Collections.<String, String>emptyMap());
+            if (arena.getPlayerCount() == 0) {
+                cleanupEmptyArena(arena);
+            }
             return;
         }
 
@@ -459,7 +480,77 @@ public class GameManager {
         arena.setCountdown(seconds - 1);
     }
 
-    private Arena findBestJoinableArena() {
+    private void joinRuntimeArena(Player player, Arena arena) {
+        if (!arena.isReady()) {
+            plugin.getMessageManager().send(player, "game.arena-not-ready");
+            return;
+        }
+
+        if (arena.getState() != ArenaState.WAITING && arena.getState() != ArenaState.STARTING) {
+            plugin.getMessageManager().send(player, "game.arena-running");
+            return;
+        }
+
+        int maxPlayers = getArenaCapacity();
+        if (arena.isFull(maxPlayers)) {
+            plugin.getMessageManager().send(player, "game.arena-full");
+            return;
+        }
+
+        if (!plugin.getWorldCloneManager().ensureClone(arena)) {
+            player.sendMessage(plugin.getMessageManager().get("prefix") + ChatUtil.color("&cNao foi possivel preparar o clone do mapa desta arena."));
+            return;
+        }
+
+        snapshots.put(player.getUniqueId(), PlayerSnapshot.capture(player));
+        preparePlayer(player);
+
+        arena.addPlayer(player.getUniqueId());
+        plugin.getArenaManager().setPlayerArena(player.getUniqueId(), arena);
+
+        Location joinLocation = resolveLobbySpawn(arena);
+        if (joinLocation != null) {
+            teleportSafely(player, joinLocation);
+        }
+
+        sendJoinWaitingMessage(player, arena);
+        giveWaitingLobbyItems(player);
+        broadcast(arena, "game.join-broadcast", placeholders(
+            "player", player.getName(),
+            "players", String.valueOf(arena.getPlayerCount()),
+            "max_players", String.valueOf(maxPlayers)
+        ));
+
+        if (arena.getState() == ArenaState.WAITING && arena.getPlayerCount() >= getRequiredPlayersToStart()) {
+            arena.setState(ArenaState.STARTING);
+            arena.setCountdown(getStartingCountdown());
+        }
+    }
+
+    private Arena findBestRuntimeArena() {
+        List<Arena> arenas = new ArrayList<Arena>();
+        int maxPlayers = getArenaCapacity();
+
+        for (Arena arena : plugin.getArenaManager().getRuntimeArenas()) {
+            if (arena.getState() != ArenaState.WAITING && arena.getState() != ArenaState.STARTING) {
+                continue;
+            }
+            if (arena.isFull(maxPlayers)) {
+                continue;
+            }
+            arenas.add(arena);
+        }
+
+        Collections.sort(arenas, new Comparator<Arena>() {
+            @Override
+            public int compare(Arena first, Arena second) {
+                return Integer.compare(second.getPlayerCount(), first.getPlayerCount());
+            }
+        });
+        return arenas.isEmpty() ? null : arenas.get(0);
+    }
+
+    private Arena findBestTemplateArena() {
         List<Arena> arenas = getJoinableArenas();
         return arenas.isEmpty() ? null : arenas.get(0);
     }
@@ -468,6 +559,7 @@ public class GameManager {
         arena.setState(ArenaState.INGAME);
         arena.setElapsedTime(0);
         arena.clearSnapshots();
+        assignRandomTeams(arena);
 
         for (ArenaTeam team : arena.getTeams().values()) {
             team.resetRuntime();
@@ -495,6 +587,7 @@ public class GameManager {
             ArenaTeam team = plugin.getTeamManager().getTeam(arena, uniqueId);
             if (team != null) {
                 plugin.getShopManager().applyRespawnLoadout(player, team);
+                plugin.getMessageManager().send(player, "game.team-assigned", Collections.singletonMap("team", team.getColor().getColoredName()));
             }
             Location startLocation = team == null ? resolveLobbySpawn(arena) : resolveTeamRespawn(arena, team);
             if (startLocation != null) {
@@ -515,6 +608,20 @@ public class GameManager {
             endGame(arena, aliveTeams.get(0).getColor());
         } else if (aliveTeams.isEmpty()) {
             endGame(arena, null);
+        }
+    }
+
+    private void cleanupEmptyArena(Arena arena) {
+        arena.clearSnapshots();
+        arena.clearPlacedBlocks();
+        plugin.getNpcManager().clearArenaShopNpcs(arena);
+        plugin.getWorldCloneManager().destroyClone(arena);
+        arena.resetGameRuntime();
+
+        if (arena.isRuntimeInstance()) {
+            plugin.getArenaManager().removeRuntimeArena(arena);
+        } else {
+            plugin.getNpcManager().refreshArenaShopNpcs(arena);
         }
     }
 
@@ -616,7 +723,7 @@ public class GameManager {
             }
         }, 0L, 20L);
 
-        respawnTasks.put(player.getUniqueId(), task);
+        respawnTasks.put(player.getUniqueId(), Integer.valueOf(task));
     }
 
     private void clearPendingRespawn(UUID uniqueId) {
@@ -647,6 +754,112 @@ public class GameManager {
 
     private int getRequiredPlayersToStart() {
         return getArenaCapacity();
+    }
+
+    private boolean isPreGameArena(Arena arena) {
+        return arena != null && (arena.getState() == ArenaState.WAITING || arena.getState() == ArenaState.STARTING);
+    }
+
+    private int resolveHotbarSlot(String path, int fallback) {
+        int configured = plugin.getConfig().getInt(path, fallback);
+        if (configured < 0 || configured > 8) {
+            return fallback;
+        }
+        return configured;
+    }
+
+    private ItemStack createLeaveArenaItem() {
+        return new ItemBuilder(Material.BED)
+            .name(plugin.getConfig().getString("pre-game-items.leave-arena.name", "&cVoltar ao Lobby"))
+            .lore(plugin.getConfig().getStringList("pre-game-items.leave-arena.lore"))
+            .build();
+    }
+
+    private boolean hasTeamSelectorAccess(Player player) {
+        if (player == null) {
+            return false;
+        }
+
+        String permission = plugin.getConfig().getString("pre-game-items.team-selector.permission", "newbedwars.teamselect");
+        return permission == null || permission.trim().isEmpty() || player.hasPermission(permission) || player.isOp();
+    }
+
+    private ItemStack createTeamSelectorItem(Arena arena, UUID uniqueId) {
+        TeamColor color = plugin.getTeamManager().getColor(arena, uniqueId);
+        List<String> lore = new ArrayList<String>();
+        for (String line : plugin.getConfig().getStringList("pre-game-items.team-selector.lore")) {
+            lore.add(line.replace("%team%", color == null ? "&7Aleatorio" : color.getColoredName()));
+        }
+
+        return new ItemBuilder(Material.SKULL_ITEM, 1, (short) 3)
+            .skullOwner(resolveTeamSelectorHead(color))
+            .name(plugin.getConfig().getString("pre-game-items.team-selector.name", "&bEscolher Time"))
+            .lore(lore)
+            .build();
+    }
+
+    private void sendTeamSelectorNoPermission(Player player) {
+        if (player == null) {
+            return;
+        }
+
+        String prefix = plugin.getMessageManager().getConfiguration().getString("prefix", "");
+        String raw = plugin.getConfig().getString("pre-game-items.team-selector.no-permission-message",
+            "%prefix%&cVoce nao tem permissao para escolher o time.");
+        player.sendMessage(ChatUtil.color(raw.replace("%prefix%", ChatUtil.color(prefix))));
+    }
+
+    private void sendJoinWaitingMessage(Player player, Arena arena) {
+        if (player == null || arena == null) {
+            return;
+        }
+
+        String prefix = plugin.getMessageManager().getConfiguration().getString("prefix", "");
+        String raw = plugin.getMessageManager().getConfiguration().getString("game.joined-waiting",
+            "%prefix%&aVoce entrou na arena &f%arena%&a.");
+        raw = raw.replace("%prefix%", ChatUtil.color(prefix));
+        raw = raw.replace("%arena%", arena.getDisplayName());
+        player.sendMessage(ChatUtil.color(raw));
+    }
+
+    private String resolveTeamSelectorHead(TeamColor color) {
+        if (color == TeamColor.RED) {
+            return plugin.getConfig().getString("pre-game-items.team-selector.head-owner-red", "MHF_Red");
+        }
+        if (color == TeamColor.BLUE) {
+            return plugin.getConfig().getString("pre-game-items.team-selector.head-owner-blue", "MHF_Blue");
+        }
+        return plugin.getConfig().getString("pre-game-items.team-selector.head-owner-default", "MHF_Question");
+    }
+
+    private void assignRandomTeams(Arena arena) {
+        if (arena == null) {
+            return;
+        }
+
+        Map<UUID, TeamColor> preferences = new HashMap<UUID, TeamColor>(arena.getPlayerTeams());
+        arena.getPlayerTeams().clear();
+
+        List<UUID> players = new ArrayList<UUID>(arena.getPlayers());
+        Collections.shuffle(players);
+        List<TeamColor> colors = new ArrayList<TeamColor>(plugin.getTeamManager().getActiveColors());
+        Collections.shuffle(colors);
+
+        List<UUID> remainingPlayers = new ArrayList<UUID>();
+        for (UUID uniqueId : players) {
+            TeamColor preferred = preferences.get(uniqueId);
+            if (preferred != null && colors.contains(preferred)) {
+                arena.getPlayerTeams().put(uniqueId, preferred);
+                colors.remove(preferred);
+            } else {
+                remainingPlayers.add(uniqueId);
+            }
+        }
+
+        int limit = Math.min(remainingPlayers.size(), colors.size());
+        for (int i = 0; i < limit; i++) {
+            arena.getPlayerTeams().put(remainingPlayers.get(i), colors.get(i));
+        }
     }
 
     private int getStartingCountdown() {

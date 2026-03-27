@@ -82,7 +82,7 @@ public class BedWarsCommand implements CommandExecutor, TabCompleter {
         }
 
         String name = args[1];
-        if (plugin.getArenaManager().getArena(name) != null) {
+        if (plugin.getArenaManager().getConfiguredArena(name) != null) {
             plugin.getMessageManager().send(sender, "general.arena-exists");
             return true;
         }
@@ -113,7 +113,7 @@ public class BedWarsCommand implements CommandExecutor, TabCompleter {
             return true;
         }
 
-        Arena arena = plugin.getArenaManager().getArena(args[1]);
+        Arena arena = plugin.getArenaManager().getConfiguredArena(args[1]);
         if (arena == null) {
             plugin.getMessageManager().send(sender, "general.arena-not-found", Collections.singletonMap("arena", args[1]));
             return true;
@@ -129,13 +129,13 @@ public class BedWarsCommand implements CommandExecutor, TabCompleter {
             return true;
         }
 
-        if (plugin.getArenaManager().getArenas().isEmpty()) {
+        if (plugin.getArenaManager().getConfiguredArenas().isEmpty()) {
             plugin.getMessageManager().send(sender, "general.arena-list-empty");
             return true;
         }
 
         sender.sendMessage(plugin.getMessageManager().get("general.arena-list-header"));
-        for (Arena arena : plugin.getArenaManager().getArenas()) {
+        for (Arena arena : plugin.getArenaManager().getConfiguredArenas()) {
             sender.sendMessage(plugin.getMessageManager().get("general.arena-list-entry", map(
                 "arena", arena.getName(),
                 "state", arena.getState().name(),
@@ -159,7 +159,7 @@ public class BedWarsCommand implements CommandExecutor, TabCompleter {
             return true;
         }
 
-        Arena arena = plugin.getArenaManager().getArena(args[1]);
+        Arena arena = plugin.getArenaManager().getConfiguredArena(args[1]);
         if (arena == null) {
             plugin.getMessageManager().send(sender, "general.arena-not-found", Collections.singletonMap("arena", args[1]));
             return true;
@@ -194,7 +194,7 @@ public class BedWarsCommand implements CommandExecutor, TabCompleter {
             return true;
         }
 
-        Arena arena = plugin.getArenaManager().getArena(args[1]);
+        Arena arena = plugin.getArenaManager().getConfiguredArena(args[1]);
         if (arena == null) {
             plugin.getMessageManager().send(sender, "general.arena-not-found", Collections.singletonMap("arena", args[1]));
             return true;
@@ -325,7 +325,7 @@ public class BedWarsCommand implements CommandExecutor, TabCompleter {
 
         if (args.length == 2 && Arrays.asList("delete", "setup", "join").contains(args[0].toLowerCase())) {
             List<String> arenas = new ArrayList<String>();
-            for (Arena arena : plugin.getArenaManager().getArenas()) {
+            for (Arena arena : plugin.getArenaManager().getConfiguredArenas()) {
                 arenas.add(arena.getName());
             }
             return partial(args[1], arenas);

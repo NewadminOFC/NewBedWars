@@ -1,5 +1,6 @@
 package n.plugins.newbedwars.manager;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 import n.plugins.newbedwars.NewBedWars;
@@ -139,6 +140,49 @@ public class NpcManager {
         return hasType(npc, BedWarsNpcType.UPGRADE_SHOP);
     }
 
+    public BedWarsNpcType getNpcType(NPC npc) {
+        if (!isBedWarsNpc(npc)) {
+            return null;
+        }
+
+        Object rawType = npc.data().get(DATA_TYPE);
+        if (rawType == null) {
+            return null;
+        }
+
+        try {
+            return BedWarsNpcType.valueOf(rawType.toString());
+        } catch (IllegalArgumentException exception) {
+            return null;
+        }
+    }
+
+    public String getArenaName(NPC npc) {
+        if (npc == null) {
+            return null;
+        }
+
+        Object rawArena = npc.data().get(DATA_ARENA);
+        return rawArena == null ? null : rawArena.toString();
+    }
+
+    public TeamColor getTeamColor(NPC npc) {
+        if (npc == null) {
+            return null;
+        }
+
+        Object rawTeam = npc.data().get(DATA_TEAM);
+        if (rawTeam == null) {
+            return null;
+        }
+
+        try {
+            return TeamColor.valueOf(rawTeam.toString());
+        } catch (IllegalArgumentException exception) {
+            return null;
+        }
+    }
+
     public void refreshVisuals() {
         for (NPC npc : CitizensAPI.getNPCRegistry()) {
             if (!isBedWarsNpc(npc)) {
@@ -150,7 +194,7 @@ public class NpcManager {
                 continue;
             }
 
-            if (isSoloNpc(npc)) {
+            if (usesHologram(npc)) {
                 updateHologram(npc);
             } else {
                 removeHologram(npc.getId());
@@ -174,8 +218,19 @@ public class NpcManager {
         }
     }
 
+    public void clearArenaShopNpcs(Arena arena) {
+        if (arena == null) {
+            return;
+        }
+
+        for (TeamColor color : plugin.getTeamManager().getActiveColors()) {
+            removeRuntimeNpc(buildRuntimeKey(arena.getName(), color, BedWarsNpcType.ITEM_SHOP));
+            removeRuntimeNpc(buildRuntimeKey(arena.getName(), color, BedWarsNpcType.UPGRADE_SHOP));
+        }
+    }
+
     public void updateHologram(NPC npc) {
-        if (npc == null || !npc.isSpawned() || !isSoloNpc(npc)) {
+        if (npc == null || !npc.isSpawned() || !usesHologram(npc)) {
             return;
         }
 
@@ -185,8 +240,8 @@ public class NpcManager {
             holograms.put(npc.getId(), hologram);
         }
 
-        String top = ChatUtil.color(formatNpcText(plugin.getConfig().getString("npc.solo.hologram-top", "&bBedWars - %mode%")));
-        String bottom = ChatUtil.color(formatNpcText(plugin.getConfig().getString("npc.solo.hologram-bottom", "&e%playing% jogando!")));
+        String top = getNpcTopText(npc);
+        String bottom = getNpcBottomText(npc);
         Location npcLocation = npc.getEntity().getLocation();
 
         if (hologram.size() < 2) {
@@ -197,8 +252,8 @@ public class NpcManager {
 
         hologram.setLineName(0, top);
         hologram.setLineName(1, bottom);
-        hologram.teleportLine(0, npcLocation.clone().add(0.0D, getTopLineHeight(), 0.0D));
-        hologram.teleportLine(1, npcLocation.clone().add(0.0D, getBottomLineHeight(), 0.0D));
+        hologram.teleportLine(0, npcLocation.clone().add(0.0D, getTopLineHeight(npc), 0.0D));
+        hologram.teleportLine(1, npcLocation.clone().add(0.0D, getBottomLineHeight(npc), 0.0D));
     }
 
     public void removeHologram(int npcId) {
@@ -220,7 +275,7 @@ public class NpcManager {
         }
 
         for (NPC npc : CitizensAPI.getNPCRegistry()) {
-            if (!isBedWarsNpc(npc)) {
+            if (!isSoloNpc(npc)) {
                 continue;
             }
 
@@ -261,7 +316,7 @@ public class NpcManager {
     }
 
     private void respawnAllArenaShopNpcs() {
-        for (Arena arena : plugin.getArenaManager().getArenas()) {
+        for (Arena arena : plugin.getArenaManager().getConfiguredArenas()) {
             refreshArenaShopNpcs(arena);
         }
     }
@@ -272,6 +327,7 @@ public class NpcManager {
         if (oldId != null) {
             NPC oldNpc = CitizensAPI.getNPCRegistry().getById(oldId.intValue());
             if (oldNpc != null) {
+                removeHologram(oldNpc.getId());
                 oldNpc.destroy();
             }
         }
@@ -281,7 +337,7 @@ public class NpcManager {
         }
 
         Location spawnLocation = LocationUtil.npcSpawnLocation(rawLocation);
-        NPC npc = CitizensAPI.getNPCRegistry().createNPC(EntityType.VILLAGER, type == BedWarsNpcType.ITEM_SHOP ? "Loja" : "Melhorias");
+        NPC npc = CitizensAPI.getNPCRegistry().createNPC(EntityType.VILLAGER, " ");
         npc.setProtected(true);
         npc.data().setPersistent(DATA_TYPE, type.name());
         npc.data().setPersistent(DATA_ARENA, arena.getName());
@@ -289,20 +345,27 @@ public class NpcManager {
         setMetadataIfPresent(npc, "NAMEPLATE_VISIBLE", false);
         applyLookClose(npc);
         npc.spawn(spawnLocation);
-        hideNameplate(npc);
 
         if (npc.getEntity() instanceof Villager) {
             Villager villager = (Villager) npc.getEntity();
             villager.setProfession(type == BedWarsNpcType.ITEM_SHOP ? Villager.Profession.BLACKSMITH : Villager.Profession.LIBRARIAN);
             villager.setAdult();
+            villager.setCustomName(null);
+            villager.setCustomNameVisible(false);
+            try {
+                villager.getClass().getMethod("setRecipes", java.util.List.class).invoke(villager, new ArrayList());
+            } catch (Exception ignored) {
+            }
         }
 
+        updateHologram(npc);
         runtimeShopNpcIds.put(key, npc.getId());
     }
 
     private void cleanupRuntimeShopNpcs() {
         for (NPC npc : CitizensAPI.getNPCRegistry()) {
             if (isItemShopNpc(npc) || isUpgradeShopNpc(npc)) {
+                removeHologram(npc.getId());
                 npc.destroy();
             }
         }
@@ -313,6 +376,7 @@ public class NpcManager {
         for (Integer id : runtimeShopNpcIds.values()) {
             NPC npc = CitizensAPI.getNPCRegistry().getById(id.intValue());
             if (npc != null) {
+                removeHologram(npc.getId());
                 npc.destroy();
             }
         }
@@ -339,6 +403,19 @@ public class NpcManager {
         }
     }
 
+    private void removeRuntimeNpc(String key) {
+        Integer id = runtimeShopNpcIds.remove(key);
+        if (id == null) {
+            return;
+        }
+
+        NPC npc = CitizensAPI.getNPCRegistry().getById(id.intValue());
+        if (npc != null) {
+            removeHologram(npc.getId());
+            npc.destroy();
+        }
+    }
+
     private String buildRuntimeKey(String arenaName, TeamColor color, BedWarsNpcType type) {
         return arenaName.toLowerCase() + ":" + color.name() + ":" + type.name();
     }
@@ -346,8 +423,8 @@ public class NpcManager {
     private NpcHologram createHologram(NPC npc) {
         NpcHologram hologram = new NpcHologram();
         Location base = npc.getEntity().getLocation();
-        hologram.addLine(spawnLine(base.clone().add(0.0D, getTopLineHeight(), 0.0D), ChatUtil.color(formatNpcText(plugin.getConfig().getString("npc.solo.hologram-top", "&bBedWars - %mode%")))));
-        hologram.addLine(spawnLine(base.clone().add(0.0D, getBottomLineHeight(), 0.0D), ChatUtil.color(formatNpcText(plugin.getConfig().getString("npc.solo.hologram-bottom", "&e%playing% jogando!")))));
+        hologram.addLine(spawnLine(base.clone().add(0.0D, getTopLineHeight(npc), 0.0D), getNpcTopText(npc)));
+        hologram.addLine(spawnLine(base.clone().add(0.0D, getBottomLineHeight(npc), 0.0D), getNpcBottomText(npc)));
         return hologram;
     }
 
@@ -405,11 +482,47 @@ public class NpcManager {
         applyHiddenNameTeam(scoreboard);
     }
 
-    private double getTopLineHeight() {
+    private boolean usesHologram(NPC npc) {
+        return isSoloNpc(npc) || isItemShopNpc(npc) || isUpgradeShopNpc(npc);
+    }
+
+    private String getNpcTopText(NPC npc) {
+        if (isItemShopNpc(npc)) {
+            return ChatUtil.color(plugin.getConfig().getString("npc.item-shop.hologram-top", "&b&lLOJA"));
+        }
+        if (isUpgradeShopNpc(npc)) {
+            return ChatUtil.color(plugin.getConfig().getString("npc.upgrade-shop.hologram-top", "&b&lMELHORIAS"));
+        }
+        return ChatUtil.color(formatNpcText(plugin.getConfig().getString("npc.solo.hologram-top", "&b&lBedWars - %mode%")));
+    }
+
+    private String getNpcBottomText(NPC npc) {
+        if (isItemShopNpc(npc)) {
+            return ChatUtil.color(plugin.getConfig().getString("npc.item-shop.hologram-bottom", "&eClique para abrir"));
+        }
+        if (isUpgradeShopNpc(npc)) {
+            return ChatUtil.color(plugin.getConfig().getString("npc.upgrade-shop.hologram-bottom", "&eClique para abrir"));
+        }
+        return ChatUtil.color(formatNpcText(plugin.getConfig().getString("npc.solo.hologram-bottom", "&e%playing% jogando!")));
+    }
+
+    private double getTopLineHeight(NPC npc) {
+        if (isItemShopNpc(npc)) {
+            return plugin.getConfig().getDouble("npc.item-shop.hologram-top-height", 2.18D);
+        }
+        if (isUpgradeShopNpc(npc)) {
+            return plugin.getConfig().getDouble("npc.upgrade-shop.hologram-top-height", 2.18D);
+        }
         return plugin.getConfig().getDouble("npc.solo.hologram-top-height", 2.00D);
     }
 
-    private double getBottomLineHeight() {
+    private double getBottomLineHeight(NPC npc) {
+        if (isItemShopNpc(npc)) {
+            return plugin.getConfig().getDouble("npc.item-shop.hologram-bottom-height", 1.90D);
+        }
+        if (isUpgradeShopNpc(npc)) {
+            return plugin.getConfig().getDouble("npc.upgrade-shop.hologram-bottom-height", 1.90D);
+        }
         return plugin.getConfig().getDouble("npc.solo.hologram-bottom-height", 1.74D);
     }
 
@@ -421,8 +534,14 @@ public class NpcManager {
         Location location = npc.getEntity().getLocation();
         npc.despawn();
         npc.spawn(location);
-        hideNameplate(npc);
         if (isSoloNpc(npc)) {
+            hideNameplate(npc);
+        } else if (npc.getEntity() instanceof Villager) {
+            Villager villager = (Villager) npc.getEntity();
+            villager.setCustomName(null);
+            villager.setCustomNameVisible(false);
+        }
+        if (usesHologram(npc)) {
             updateHologram(npc);
         }
     }

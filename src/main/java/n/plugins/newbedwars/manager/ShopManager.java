@@ -98,6 +98,8 @@ public class ShopManager {
             return;
         }
 
+        Arena arena = plugin.getArenaManager().getArenaByPlayer(player.getUniqueId());
+        applyArmorLoadout(player, arena, team);
         giveStarterSword(player, team);
         applyUpgradeEffects(player, team);
         player.updateInventory();
@@ -250,6 +252,28 @@ public class ShopManager {
         return true;
     }
 
+    public boolean buyArmor(Player player, Arena arena, ArenaTeam team, int tier, Material currency, int amount, String itemName) {
+        if (player == null || arena == null || team == null) {
+            return false;
+        }
+
+        if (arena.getArmorTier(player.getUniqueId()) >= tier) {
+            send(player, "&cVoce ja possui essa armadura ou uma melhor.");
+            return false;
+        }
+
+        if (!hasEnough(player, currency, amount)) {
+            send(player, "&cVoce precisa de &f" + amount + " " + getCurrencyName(currency) + "&c.");
+            return false;
+        }
+
+        removeCurrency(player, currency, amount);
+        arena.setArmorTier(player.getUniqueId(), tier);
+        applyArmorLoadout(player, arena, team);
+        send(player, "&aVoce comprou &f" + itemName + "&a.");
+        return true;
+    }
+
     public ItemStack createSword(Material material, boolean sharpness) {
         ItemStack sword = new ItemStack(material, 1);
         if (sharpness) {
@@ -263,6 +287,8 @@ public class ShopManager {
     }
 
     private void refreshInventoryUpgrades(Player player, ArenaTeam team) {
+        Arena arena = plugin.getArenaManager().getArenaByPlayer(player.getUniqueId());
+        applyArmorLoadout(player, arena, team);
         applyProtectionToArmor(player.getInventory().getArmorContents(), team.getProtectionTier());
         ensureSwordPresent(player, team);
         reapplySwordSharpness(player, team.hasSharpenedSwords());
@@ -366,15 +392,46 @@ public class ShopManager {
         return 0;
     }
 
-    private ItemStack[] createTeamArmor(ArenaTeam team) {
+    private void applyArmorLoadout(Player player, Arena arena, ArenaTeam team) {
+        int armorTier = arena == null ? 0 : arena.getArmorTier(player.getUniqueId());
+        ItemStack[] armor = createTeamArmor(team, armorTier);
+        applyProtectionToArmor(armor, team.getProtectionTier());
+        player.getInventory().setArmorContents(armor);
+    }
+
+    private ItemStack[] createTeamArmor(ArenaTeam team, int armorTier) {
         ItemStack helmet = colorArmor(new ItemStack(Material.LEATHER_HELMET), team.getColor());
         ItemStack chest = colorArmor(new ItemStack(Material.LEATHER_CHESTPLATE), team.getColor());
-        ItemStack legs = colorArmor(new ItemStack(Material.LEATHER_LEGGINGS), team.getColor());
-        ItemStack boots = colorArmor(new ItemStack(Material.LEATHER_BOOTS), team.getColor());
+        ItemStack legs = createArmorLeggings(team, armorTier);
+        ItemStack boots = createArmorBoots(team, armorTier);
 
-        ItemStack[] armor = new ItemStack[] {boots, legs, chest, helmet};
-        applyProtectionToArmor(armor, team.getProtectionTier());
-        return armor;
+        return new ItemStack[] {boots, legs, chest, helmet};
+    }
+
+    private ItemStack createArmorLeggings(ArenaTeam team, int armorTier) {
+        if (armorTier >= 3) {
+            return new ItemStack(Material.DIAMOND_LEGGINGS);
+        }
+        if (armorTier >= 2) {
+            return new ItemStack(Material.IRON_LEGGINGS);
+        }
+        if (armorTier >= 1) {
+            return new ItemStack(Material.CHAINMAIL_LEGGINGS);
+        }
+        return colorArmor(new ItemStack(Material.LEATHER_LEGGINGS), team.getColor());
+    }
+
+    private ItemStack createArmorBoots(ArenaTeam team, int armorTier) {
+        if (armorTier >= 3) {
+            return new ItemStack(Material.DIAMOND_BOOTS);
+        }
+        if (armorTier >= 2) {
+            return new ItemStack(Material.IRON_BOOTS);
+        }
+        if (armorTier >= 1) {
+            return new ItemStack(Material.CHAINMAIL_BOOTS);
+        }
+        return colorArmor(new ItemStack(Material.LEATHER_BOOTS), team.getColor());
     }
 
     private void applyProtectionToArmor(ItemStack[] armor, int level) {

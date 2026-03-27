@@ -2,6 +2,7 @@ package n.plugins.newbedwars.listener;
 
 import n.plugins.newbedwars.NewBedWars;
 import n.plugins.newbedwars.arena.Arena;
+import n.plugins.newbedwars.menu.BaseMenu;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.EventHandler;
@@ -9,6 +10,8 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.event.inventory.InventoryDragEvent;
+import org.bukkit.event.inventory.InventoryOpenEvent;
+import org.bukkit.event.inventory.InventoryType;
 import org.bukkit.event.player.PlayerDropItemEvent;
 import org.bukkit.event.player.PlayerPickupItemEvent;
 import org.bukkit.inventory.ItemStack;
@@ -22,7 +25,7 @@ public class InventoryListener implements Listener {
         this.plugin = plugin;
     }
 
-    @EventHandler
+    @EventHandler(priority = EventPriority.HIGHEST)
     public void onInventoryClick(InventoryClickEvent event) {
         if (plugin.getMenuManager().handleClick(event)) {
             return;
@@ -33,12 +36,22 @@ public class InventoryListener implements Listener {
         }
 
         Player player = (Player) event.getWhoClicked();
+        if (event.getView().getTopInventory().getHolder() instanceof BaseMenu) {
+            event.setCancelled(true);
+        }
+
+        if (isBlockedMerchantView(player, event.getView().getTopInventory().getType())) {
+            event.setCancelled(true);
+            player.closeInventory();
+            return;
+        }
+
         if (plugin.getSetupManager().isInSetup(player) || plugin.getGameManager().isRespawning(player.getUniqueId())) {
             event.setCancelled(true);
         }
     }
 
-    @EventHandler
+    @EventHandler(priority = EventPriority.HIGHEST)
     public void onInventoryDrag(InventoryDragEvent event) {
         if (plugin.getMenuManager().handleDrag(event)) {
             return;
@@ -49,6 +62,16 @@ public class InventoryListener implements Listener {
         }
 
         Player player = (Player) event.getWhoClicked();
+        if (event.getView().getTopInventory().getHolder() instanceof BaseMenu) {
+            event.setCancelled(true);
+        }
+
+        if (isBlockedMerchantView(player, event.getView().getTopInventory().getType())) {
+            event.setCancelled(true);
+            player.closeInventory();
+            return;
+        }
+
         if (plugin.getSetupManager().isInSetup(player) || plugin.getGameManager().isRespawning(player.getUniqueId())) {
             event.setCancelled(true);
         }
@@ -57,6 +80,26 @@ public class InventoryListener implements Listener {
     @EventHandler
     public void onInventoryClose(InventoryCloseEvent event) {
         plugin.getMenuManager().handleClose(event);
+    }
+
+    @EventHandler(priority = EventPriority.HIGHEST)
+    public void onInventoryOpen(InventoryOpenEvent event) {
+        if (!(event.getPlayer() instanceof Player)) {
+            return;
+        }
+
+        Player player = (Player) event.getPlayer();
+        if (isBlockedMerchantView(player, event.getInventory().getType())) {
+            event.setCancelled(true);
+            plugin.getServer().getScheduler().runTask(plugin, new Runnable() {
+                @Override
+                public void run() {
+                    if (player.isOnline()) {
+                        player.closeInventory();
+                    }
+                }
+            });
+        }
     }
 
     @EventHandler
@@ -123,5 +166,14 @@ public class InventoryListener implements Listener {
             || material == Material.GOLD_CHESTPLATE
             || material == Material.GOLD_LEGGINGS
             || material == Material.GOLD_BOOTS;
+    }
+
+    private boolean isBlockedMerchantView(Player player, InventoryType type) {
+        if (type != InventoryType.MERCHANT || player == null) {
+            return false;
+        }
+
+        Arena arena = plugin.getArenaManager().getArenaByPlayer(player.getUniqueId());
+        return plugin.getSetupManager().isInSetup(player) || arena != null;
     }
 }

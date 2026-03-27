@@ -4,6 +4,9 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 import n.plugins.newbedwars.NewBedWars;
+import n.plugins.newbedwars.arena.Arena;
+import n.plugins.newbedwars.arena.TeamColor;
+import n.plugins.newbedwars.npc.BedWarsNpcType;
 import net.citizensnpcs.api.CitizensAPI;
 import net.citizensnpcs.api.event.NPCRemoveEvent;
 import net.citizensnpcs.api.event.NPCRightClickEvent;
@@ -13,6 +16,7 @@ import org.bukkit.entity.Entity;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
+import org.bukkit.event.player.PlayerInteractAtEntityEvent;
 import org.bukkit.event.player.PlayerInteractEntityEvent;
 
 public class NpcListener implements Listener {
@@ -25,12 +29,14 @@ public class NpcListener implements Listener {
         this.interactionCooldown = new HashMap<UUID, Long>();
     }
 
-    @EventHandler(priority = EventPriority.NORMAL)
+    @EventHandler(priority = EventPriority.HIGHEST)
     public void onNpcClick(NPCRightClickEvent event) {
         NPC npc = event.getNPC();
         if (!plugin.getNpcManager().isBedWarsNpc(npc)) {
             return;
         }
+
+        event.setCancelled(true);
 
         if (isCoolingDown(event.getClicker().getUniqueId())) {
             return;
@@ -39,8 +45,25 @@ public class NpcListener implements Listener {
         handleNpcInteraction(event.getClicker(), npc);
     }
 
-    @EventHandler(priority = EventPriority.NORMAL)
+    @EventHandler(priority = EventPriority.HIGHEST)
     public void onEntityInteract(PlayerInteractEntityEvent event) {
+        Entity clicked = event.getRightClicked();
+        NPC npc = CitizensAPI.getNPCRegistry().getNPC(clicked);
+        if (!plugin.getNpcManager().isBedWarsNpc(npc)) {
+            return;
+        }
+
+        if (isCoolingDown(event.getPlayer().getUniqueId())) {
+            event.setCancelled(true);
+            return;
+        }
+
+        event.setCancelled(true);
+        handleNpcInteraction(event.getPlayer(), npc);
+    }
+
+    @EventHandler(priority = EventPriority.HIGHEST)
+    public void onEntityInteractAt(PlayerInteractAtEntityEvent event) {
         Entity clicked = event.getRightClicked();
         NPC npc = CitizensAPI.getNPCRegistry().getNPC(clicked);
         if (!plugin.getNpcManager().isBedWarsNpc(npc)) {
@@ -71,19 +94,63 @@ public class NpcListener implements Listener {
     }
 
     private void handleNpcInteraction(org.bukkit.entity.Player player, NPC npc) {
+        if (plugin.getSetupManager().isInSetup(player) && (plugin.getNpcManager().isItemShopNpc(npc) || plugin.getNpcManager().isUpgradeShopNpc(npc))) {
+            String arenaName = plugin.getNpcManager().getArenaName(npc);
+            TeamColor color = plugin.getNpcManager().getTeamColor(npc);
+            BedWarsNpcType type = plugin.getNpcManager().getNpcType(npc);
+            Arena arena = plugin.getArenaManager().getArena(arenaName);
+            if (plugin.getSetupManager().canEditNpc(player, arena) && color != null && type != null) {
+                openMenuNextTick(player, new Runnable() {
+                    @Override
+                    public void run() {
+                        plugin.getMenuManager().openSetupNpcMenu(player, arena, color, type);
+                    }
+                });
+                return;
+            }
+        }
+
         if (plugin.getNpcManager().isSoloNpc(npc)) {
-            plugin.getMenuManager().openSoloQueueMenu(player);
+            openMenuNextTick(player, new Runnable() {
+                @Override
+                public void run() {
+                    plugin.getMenuManager().openSoloQueueMenu(player);
+                }
+            });
             return;
         }
 
         if (plugin.getNpcManager().isItemShopNpc(npc)) {
-            plugin.getMenuManager().openItemShop(player);
+            openMenuNextTick(player, new Runnable() {
+                @Override
+                public void run() {
+                    plugin.getMenuManager().openItemShop(player);
+                }
+            });
             return;
         }
 
         if (plugin.getNpcManager().isUpgradeShopNpc(npc)) {
-            plugin.getMenuManager().openUpgradeShop(player);
+            openMenuNextTick(player, new Runnable() {
+                @Override
+                public void run() {
+                    plugin.getMenuManager().openUpgradeShop(player);
+                }
+            });
         }
+    }
+
+    private void openMenuNextTick(final org.bukkit.entity.Player player, final Runnable runnable) {
+        player.closeInventory();
+        plugin.getServer().getScheduler().runTask(plugin, new Runnable() {
+            @Override
+            public void run() {
+                if (player == null || !player.isOnline()) {
+                    return;
+                }
+                runnable.run();
+            }
+        });
     }
 
     private boolean isCoolingDown(UUID uniqueId) {

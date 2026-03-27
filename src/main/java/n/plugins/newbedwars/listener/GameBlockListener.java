@@ -1,5 +1,6 @@
 package n.plugins.newbedwars.listener;
 
+import java.util.Locale;
 import n.plugins.newbedwars.NewBedWars;
 import n.plugins.newbedwars.arena.Arena;
 import n.plugins.newbedwars.arena.ArenaState;
@@ -9,6 +10,7 @@ import n.plugins.newbedwars.util.LocationUtil;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
 import org.bukkit.entity.Player;
+import org.bukkit.entity.TNTPrimed;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockBreakEvent;
@@ -17,9 +19,11 @@ import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.entity.EntityExplodeEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
+import org.bukkit.metadata.FixedMetadataValue;
 
 public class GameBlockListener implements Listener {
 
+    private static final String META_TNT_INITIAL_FUSE = "newbedwars_tnt_initial_fuse";
     private final NewBedWars plugin;
 
     public GameBlockListener(NewBedWars plugin) {
@@ -37,6 +41,13 @@ public class GameBlockListener implements Listener {
             || arena.getSpectators().contains(event.getPlayer().getUniqueId())
             || plugin.getGameManager().isRespawning(event.getPlayer().getUniqueId())) {
             event.setCancelled(true);
+            return;
+        }
+
+        if (event.getBlockPlaced().getType() == Material.TNT) {
+            event.setCancelled(true);
+            removeOneFromHand(event.getPlayer());
+            spawnPrimedTnt(event.getPlayer(), event.getBlockPlaced().getLocation());
             return;
         }
 
@@ -74,6 +85,7 @@ public class GameBlockListener implements Listener {
             }
 
             event.setCancelled(true);
+            event.setExpToDrop(0);
             destroyBed(arena, bedTeam, player);
             return;
         }
@@ -216,7 +228,7 @@ public class GameBlockListener implements Listener {
                     if (headLocation != null) {
                         Block head = headLocation.getBlock();
                         arena.registerSnapshot(head.getState());
-                        head.setType(Material.AIR);
+                        removeBlockSilently(head);
                     }
                 }
                 if (team.getBedData().getFoot() != null) {
@@ -224,10 +236,115 @@ public class GameBlockListener implements Listener {
                     if (footLocation != null) {
                         Block foot = footLocation.getBlock();
                         arena.registerSnapshot(foot.getState());
-                        foot.setType(Material.AIR);
+                        removeBlockSilently(foot);
                     }
                 }
             }
         });
+    }
+
+    private void spawnPrimedTnt(Player player, org.bukkit.Location blockLocation) {
+        if (player == null || blockLocation == null || blockLocation.getWorld() == null) {
+            return;
+        }
+
+        TNTPrimed tnt = (TNTPrimed) blockLocation.getWorld().spawn(blockLocation.clone().add(0.5D, 0.0D, 0.5D), TNTPrimed.class);
+        int fuseTicks = plugin.getConfig().getInt("special-items.tnt.fuse-ticks", 40);
+        tnt.setFuseTicks(fuseTicks);
+        tnt.setYield((float) plugin.getConfig().getDouble("special-items.tnt.yield", 4.0D));
+        tnt.setIsIncendiary(plugin.getConfig().getBoolean("special-items.tnt.incendiary", false));
+        tnt.setMetadata(GameItemListener.META_SPECIAL_TNT, new FixedMetadataValue(plugin, true));
+        tnt.setMetadata(GameItemListener.META_SPECIAL_OWNER, new FixedMetadataValue(plugin, player.getUniqueId().toString()));
+        tnt.setMetadata(GameItemListener.META_TNT_UNLOCKED, new FixedMetadataValue(plugin, false));
+        tnt.setMetadata(META_TNT_INITIAL_FUSE, new FixedMetadataValue(plugin, fuseTicks));
+        tnt.setVelocity(new org.bukkit.util.Vector(0.0D, 0.0D, 0.0D));
+
+        if (plugin.getConfig().getBoolean("special-items.tnt.timer-enabled", true)) {
+            startTntTimerTask(tnt);
+        }
+    }
+
+    private void startTntTimerTask(final TNTPrimed tnt) {
+        final int[] taskId = new int[1];
+        taskId[0] = plugin.getServer().getScheduler().scheduleSyncRepeatingTask(plugin, new Runnable() {
+            @Override
+            public void run() {
+                if (tnt == null || !tnt.isValid() || tnt.isDead()) {
+                    plugin.getServer().getScheduler().cancelTask(taskId[0]);
+                    return;
+                }
+
+                int initialFuse = readInitialFuseTicks(tnt);
+                double remainingPercent = initialFuse <= 0 ? 0.0D : Math.max(0.0D, Math.min(1.0D, tnt.getFuseTicks() / (double) initialFuse));
+                String color = remainingPercent > 0.5D ? "&a" : remainingPercent > 0.25D ? "&e" : "&c";
+                String seconds = String.format(Locale.US, "%.2f", Math.max(0.0D, tnt.getFuseTicks() / 20.0D));
+                String format = plugin.getConfig().getString("special-items.tnt.timer-format", "%color%%seconds%s");
+                if (!format.contains("%color%") && ("&c%seconds%s".equalsIgnoreCase(format) || "%seconds%s".equalsIgnoreCase(format))) {
+                    format = "%color%%seconds%s";
+                }
+                String text = format.replace("%color%", color).replace("%seconds%", seconds);
+                if (!isTntUnlocked(tnt)) {
+                    tnt.setVelocity(new org.bukkit.util.Vector(0.0D, 0.0D, 0.0D));
+                }
+                tnt.setCustomNameVisible(true);
+                tnt.setCustomName(n.plugins.newbedwars.util.ChatUtil.color(text));
+            }
+        }, 0L, 1L);
+    }
+
+    private int readInitialFuseTicks(TNTPrimed tnt) {
+        if (tnt == null || !tnt.hasMetadata(META_TNT_INITIAL_FUSE)) {
+            return plugin.getConfig().getInt("special-items.tnt.fuse-ticks", 40);
+        }
+
+        try {
+            return tnt.getMetadata(META_TNT_INITIAL_FUSE).get(0).asInt();
+        } catch (Exception ignored) {
+            return plugin.getConfig().getInt("special-items.tnt.fuse-ticks", 40);
+        }
+    }
+
+    private boolean isTntUnlocked(TNTPrimed tnt) {
+        if (tnt == null || !tnt.hasMetadata(GameItemListener.META_TNT_UNLOCKED)) {
+            return false;
+        }
+
+        try {
+            return tnt.getMetadata(GameItemListener.META_TNT_UNLOCKED).get(0).asBoolean();
+        } catch (Exception ignored) {
+            return false;
+        }
+    }
+
+    @SuppressWarnings("deprecation")
+    private void removeBlockSilently(Block block) {
+        if (block == null) {
+            return;
+        }
+
+        try {
+            block.setTypeIdAndData(0, (byte) 0, false);
+        } catch (Throwable ignored) {
+            block.setType(Material.AIR);
+        }
+    }
+
+    private void removeOneFromHand(Player player) {
+        if (player == null) {
+            return;
+        }
+
+        org.bukkit.inventory.ItemStack hand = player.getItemInHand();
+        if (hand == null) {
+            return;
+        }
+
+        if (hand.getAmount() <= 1) {
+            player.setItemInHand(null);
+        } else {
+            hand.setAmount(hand.getAmount() - 1);
+            player.setItemInHand(hand);
+        }
+        player.updateInventory();
     }
 }

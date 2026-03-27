@@ -20,6 +20,7 @@ public abstract class BaseMenu implements InventoryHolder {
         this.inventory = Bukkit.createInventory(this, getSize(), getTitle());
         draw(player);
         plugin.getMenuManager().track(player, this);
+        player.setItemOnCursor(null);
         player.openInventory(inventory);
     }
 
@@ -30,6 +31,10 @@ public abstract class BaseMenu implements InventoryHolder {
     protected abstract void draw(Player player);
 
     public abstract void handleClick(Player player, int slot, ClickType clickType);
+
+    public boolean isInventory(Inventory other) {
+        return inventory != null && inventory.equals(other);
+    }
 
     @Override
     public Inventory getInventory() {

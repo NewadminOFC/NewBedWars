@@ -45,7 +45,7 @@ public class GeneratorManager {
     }
 
     private void tickGenerators() {
-        for (Arena arena : plugin.getArenaManager().getArenas()) {
+        for (Arena arena : plugin.getArenaManager().getRuntimeArenas()) {
             if (arena.getState() != ArenaState.INGAME) {
                 continue;
             }

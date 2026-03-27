@@ -12,6 +12,13 @@ import org.bukkit.Location;
 
 public class TeamManager {
 
+    public enum TeamSelectionResult {
+        SUCCESS,
+        ALREADY_SELECTED,
+        TEAM_OCCUPIED,
+        INVALID
+    }
+
     private final NewBedWars plugin;
 
     public TeamManager(NewBedWars plugin) {
@@ -38,6 +45,44 @@ public class TeamManager {
             }
         }
         return null;
+    }
+
+    public TeamSelectionResult selectTeam(Arena arena, UUID uniqueId, TeamColor color) {
+        if (arena == null || uniqueId == null || !isActiveColor(color)) {
+            return TeamSelectionResult.INVALID;
+        }
+
+        TeamColor current = arena.getPlayerTeams().get(uniqueId);
+        if (current == color) {
+            return TeamSelectionResult.ALREADY_SELECTED;
+        }
+
+        UUID occupant = getOccupant(arena, color);
+        if (occupant != null && !occupant.equals(uniqueId)) {
+            return TeamSelectionResult.TEAM_OCCUPIED;
+        }
+
+        arena.getPlayerTeams().put(uniqueId, color);
+        return TeamSelectionResult.SUCCESS;
+    }
+
+    public UUID getOccupant(Arena arena, TeamColor color) {
+        if (arena == null || color == null) {
+            return null;
+        }
+
+        for (Map.Entry<UUID, TeamColor> entry : arena.getPlayerTeams().entrySet()) {
+            if (entry.getValue() == color && arena.getPlayers().contains(entry.getKey())) {
+                return entry.getKey();
+            }
+        }
+
+        return null;
+    }
+
+    public boolean isTeamAvailable(Arena arena, UUID uniqueId, TeamColor color) {
+        UUID occupant = getOccupant(arena, color);
+        return occupant == null || occupant.equals(uniqueId);
     }
 
     public void unassign(Arena arena, UUID uniqueId) {

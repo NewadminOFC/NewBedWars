@@ -7,6 +7,7 @@ import org.bukkit.enchantments.Enchantment;
 import org.bukkit.inventory.ItemFlag;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.inventory.meta.SkullMeta;
 
 public class ItemBuilder {
 
@@ -43,6 +44,15 @@ public class ItemBuilder {
         meta.addEnchant(Enchantment.DURABILITY, 1, true);
         meta.addItemFlags(ItemFlag.HIDE_ENCHANTS);
         itemStack.setItemMeta(meta);
+        return this;
+    }
+
+    public ItemBuilder skullOwner(String owner) {
+        ItemMeta meta = itemStack.getItemMeta();
+        if (meta instanceof SkullMeta && owner != null && !owner.trim().isEmpty()) {
+            ((SkullMeta) meta).setOwner(owner);
+            itemStack.setItemMeta(meta);
+        }
         return this;
     }
 

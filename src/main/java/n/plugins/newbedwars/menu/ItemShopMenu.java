@@ -79,6 +79,9 @@ public class ItemShopMenu extends BaseMenu {
         addOffer(player, team, 32, new Offer(Material.IRON_PICKAXE, (short) 0, "&fPicareta de Ferro", 4, Material.GOLD_INGOT, "Ferramenta melhor", simpleReward(new ItemStack(Material.IRON_PICKAXE, 1))));
         addOffer(player, team, 33, new Offer(Material.STONE_AXE, (short) 0, "&7Machado de Pedra", 10, Material.IRON_INGOT, "Ferramenta", simpleReward(new ItemStack(Material.STONE_AXE, 1))));
         addOffer(player, team, 34, new Offer(Material.IRON_AXE, (short) 0, "&fMachado de Ferro", 4, Material.GOLD_INGOT, "Ferramenta melhor", simpleReward(new ItemStack(Material.IRON_AXE, 1))));
+        addOffer(player, team, 37, new Offer(Material.CHAINMAIL_BOOTS, (short) 0, "&fArmadura de Malha", 40, Material.IRON_INGOT, "Melhora bota e calca", simpleReward(new ItemStack(Material.CHAINMAIL_BOOTS, 1))));
+        addOffer(player, team, 38, new Offer(Material.IRON_BOOTS, (short) 0, "&7Armadura de Ferro", 12, Material.GOLD_INGOT, "Melhora bota e calca", simpleReward(new ItemStack(Material.IRON_BOOTS, 1))));
+        addOffer(player, team, 39, new Offer(Material.DIAMOND_BOOTS, (short) 0, "&bArmadura de Diamante", 6, Material.EMERALD, "Melhora bota e calca", simpleReward(new ItemStack(Material.DIAMOND_BOOTS, 1))));
 
         inventory.setItem(49, new ItemBuilder(Material.BARRIER).name("&cFechar").build());
     }
@@ -112,6 +115,18 @@ public class ItemShopMenu extends BaseMenu {
         }
         if (slot == 21) {
             plugin.getShopManager().buySword(player, team, Material.DIAMOND_SWORD, Material.EMERALD, 4, ChatColorUtil.strip(offer.name));
+            return;
+        }
+        if (slot == 37) {
+            plugin.getShopManager().buyArmor(player, arena, team, 1, Material.IRON_INGOT, 40, ChatColorUtil.strip(offer.name));
+            return;
+        }
+        if (slot == 38) {
+            plugin.getShopManager().buyArmor(player, arena, team, 2, Material.GOLD_INGOT, 12, ChatColorUtil.strip(offer.name));
+            return;
+        }
+        if (slot == 39) {
+            plugin.getShopManager().buyArmor(player, arena, team, 3, Material.EMERALD, 6, ChatColorUtil.strip(offer.name));
             return;
         }
 

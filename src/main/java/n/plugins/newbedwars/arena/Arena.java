@@ -23,12 +23,15 @@ import org.bukkit.entity.Player;
 public class Arena {
 
     private final String name;
+    private final String templateName;
     private final String worldName;
+    private final boolean runtimeInstance;
     private final Map<TeamColor, ArenaTeam> teams;
     private final Map<GeneratorType, List<GeneratorPoint>> globalGenerators;
     private final Set<UUID> players;
     private final Set<UUID> spectators;
     private final Map<UUID, TeamColor> playerTeams;
+    private final Map<UUID, Integer> playerArmorTiers;
     private final Map<BlockPosition, BlockSnapshot> blockSnapshots;
     private final Set<BlockPosition> placedBlocks;
     private String activeWorldName;
@@ -41,8 +44,14 @@ public class Arena {
     private int endCountdown;
 
     public Arena(String name, String worldName) {
+        this(name, worldName, name, false);
+    }
+
+    public Arena(String name, String worldName, String templateName, boolean runtimeInstance) {
         this.name = name;
+        this.templateName = templateName == null || templateName.trim().isEmpty() ? name : templateName;
         this.worldName = worldName;
+        this.runtimeInstance = runtimeInstance;
         this.teams = new EnumMap<TeamColor, ArenaTeam>(TeamColor.class);
         for (TeamColor color : TeamColor.values()) {
             this.teams.put(color, new ArenaTeam(color));
@@ -53,6 +62,7 @@ public class Arena {
         this.players = new HashSet<UUID>();
         this.spectators = new HashSet<UUID>();
         this.playerTeams = new HashMap<UUID, TeamColor>();
+        this.playerArmorTiers = new HashMap<UUID, Integer>();
         this.blockSnapshots = new LinkedHashMap<BlockPosition, BlockSnapshot>();
         this.placedBlocks = new HashSet<BlockPosition>();
         this.state = ArenaState.WAITING;
@@ -62,8 +72,20 @@ public class Arena {
         return name;
     }
 
+    public String getTemplateName() {
+        return templateName;
+    }
+
+    public String getDisplayName() {
+        return templateName;
+    }
+
     public String getWorldName() {
         return worldName;
+    }
+
+    public boolean isRuntimeInstance() {
+        return runtimeInstance;
     }
 
     public World getWorld() {
@@ -227,6 +249,24 @@ public class Arena {
         this.players.remove(uniqueId);
         this.spectators.remove(uniqueId);
         this.playerTeams.remove(uniqueId);
+        this.playerArmorTiers.remove(uniqueId);
+    }
+
+    public int getArmorTier(UUID uniqueId) {
+        Integer tier = playerArmorTiers.get(uniqueId);
+        return tier == null ? 0 : tier.intValue();
+    }
+
+    public void setArmorTier(UUID uniqueId, int tier) {
+        if (uniqueId == null) {
+            return;
+        }
+
+        playerArmorTiers.put(uniqueId, Integer.valueOf(Math.max(0, tier)));
+    }
+
+    public void clearArmorTiers() {
+        playerArmorTiers.clear();
     }
 
     public Player getAnyAlivePlayer() {
@@ -305,12 +345,39 @@ public class Arena {
         this.players.clear();
         this.spectators.clear();
         this.playerTeams.clear();
+        this.playerArmorTiers.clear();
         this.restoreSnapshots();
         this.clearPlacedBlocks();
         this.clearActiveWorld();
         for (ArenaTeam team : teams.values()) {
             team.resetRuntime();
         }
+    }
+
+    public Arena createRuntimeCopy(String runtimeName) {
+        Arena copy = new Arena(runtimeName, worldName, templateName, true);
+        copy.waitingSpawn = getWaitingSpawn();
+        copy.waitingRegion = waitingRegion == null ? null : new CuboidRegion(waitingRegion.getPos1(), waitingRegion.getPos2());
+        copy.ready = ready;
+
+        for (TeamColor color : TeamColor.values()) {
+            ArenaTeam source = teams.get(color);
+            ArenaTeam target = copy.getTeam(color);
+            if (source != null && target != null) {
+                target.copySetupFrom(source);
+            }
+        }
+
+        for (GeneratorType type : new GeneratorType[] {GeneratorType.DIAMOND, GeneratorType.EMERALD}) {
+            copy.clearGlobalGenerators(type);
+            for (GeneratorPoint point : getGlobalGenerators(type)) {
+                copy.getGlobalGenerators(type).add(new GeneratorPoint(type, point.getLocation(), point.getOwner()));
+            }
+        }
+
+        copy.setReady(isReady());
+        copy.setState(ArenaState.WAITING);
+        return copy;
     }
 
     public List<String> validateSetup() {

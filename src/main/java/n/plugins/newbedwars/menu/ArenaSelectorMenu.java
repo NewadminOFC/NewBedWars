@@ -21,7 +21,7 @@ public class ArenaSelectorMenu extends BaseMenu {
 
     @Override
     protected String getTitle() {
-        return "§8Selecionar Arena";
+        return "Â§8Selecionar Arena";
     }
 
     @Override
@@ -46,12 +46,15 @@ public class ArenaSelectorMenu extends BaseMenu {
                 break;
             }
 
+            int mapPlayers = plugin.getArenaManager().countPlayersForTemplate(arena.getTemplateName());
+            int openInstances = plugin.getArenaManager().countOpenInstances(arena.getTemplateName());
             inventory.setItem(slot, new ItemBuilder(Material.MAP)
-                .name("&b" + arena.getName())
+                .name("&b" + arena.getDisplayName())
                 .lore(
-                    "&7Estado: &f" + arena.getState().getDisplayName(),
-                    "&7Jogadores: &f" + arena.getPlayerCount() + "/" + plugin.getTeamManager().getArenaCapacity(),
-                    "&7Pronta: " + (arena.isReady() ? "§aSim" : "§cNao"),
+                    "&7Mundo base: &f" + arena.getWorldName(),
+                    "&7Jogando neste mapa: &f" + mapPlayers,
+                    "&7Instancias abertas: &f" + Math.max(1, openInstances),
+                    "&7Pronta: " + (arena.isReady() ? "Â§aSim" : "Â§cNao"),
                     "",
                     "&eClique para entrar"
                 ).build());
@@ -77,7 +80,7 @@ public class ArenaSelectorMenu extends BaseMenu {
             return;
         }
 
-        Arena arena = plugin.getArenaManager().getArena(arenaName);
+        Arena arena = plugin.getArenaManager().getConfiguredArena(arenaName);
         if (arena != null) {
             player.closeInventory();
             plugin.getGameManager().joinArena(player, arena);
