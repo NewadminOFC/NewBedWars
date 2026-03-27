@@ -39,7 +39,7 @@ public class GameItemListener implements Listener {
         this.plugin = plugin;
     }
 
-    @EventHandler(ignoreCancelled = true)
+    @EventHandler(priority = EventPriority.HIGHEST)
     public void onInteract(PlayerInteractEvent event) {
         Action action = event.getAction();
         if (action != Action.RIGHT_CLICK_AIR && action != Action.RIGHT_CLICK_BLOCK) {
@@ -72,6 +72,11 @@ public class GameItemListener implements Listener {
         }
 
         event.setCancelled(true);
+        try {
+            event.setUseInteractedBlock(org.bukkit.event.Event.Result.DENY);
+            event.setUseItemInHand(org.bukkit.event.Event.Result.DENY);
+        } catch (Throwable ignored) {
+        }
         removeOneFromHand(player);
         launchFireball(player);
     }

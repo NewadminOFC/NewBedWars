@@ -421,6 +421,7 @@ public class GameManager {
         arena.setState(ArenaState.WAITING);
         arena.clearPlacedBlocks();
         plugin.getNpcManager().clearArenaShopNpcs(arena);
+        plugin.getHologramManager().clearArenaChestHolograms(arena);
         plugin.getWorldCloneManager().destroyClone(arena);
 
         for (ArenaTeam team : arena.getTeams().values()) {
@@ -575,7 +576,9 @@ public class GameManager {
             }
         }
 
+        plugin.getSetupManager().clearArenaSetupVisuals(arena);
         plugin.getNpcManager().refreshArenaShopNpcs(arena);
+        plugin.getHologramManager().clearArenaChestHolograms(arena);
 
         for (UUID uniqueId : new ArrayList<UUID>(arena.getPlayers())) {
             Player player = Bukkit.getPlayer(uniqueId);
@@ -615,6 +618,7 @@ public class GameManager {
         arena.clearSnapshots();
         arena.clearPlacedBlocks();
         plugin.getNpcManager().clearArenaShopNpcs(arena);
+        plugin.getHologramManager().clearArenaChestHolograms(arena);
         plugin.getWorldCloneManager().destroyClone(arena);
         arena.resetGameRuntime();
 

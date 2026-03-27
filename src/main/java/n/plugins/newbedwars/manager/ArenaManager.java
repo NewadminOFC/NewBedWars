@@ -227,6 +227,8 @@ public class ArenaManager {
                         team.setBedData(new BedData(bedHead, bedFoot));
                     }
 
+                    team.setTeamChestLocation(LocationUtil.loadLocation(teamSection, "team-chest"));
+                    team.setEnderChestLocation(LocationUtil.loadLocation(teamSection, "ender-chest"));
                     team.setItemShopLocation(LocationUtil.loadLocation(teamSection, "item-shop"));
                     team.setUpgradeShopLocation(LocationUtil.loadLocation(teamSection, "upgrade-shop"));
 
@@ -324,6 +326,8 @@ public class ArenaManager {
                 LocationUtil.saveLocation(teamSection, "bed.foot", team.getBedData().getFoot());
             }
 
+            LocationUtil.saveLocation(teamSection, "team-chest", team.getTeamChestLocation());
+            LocationUtil.saveLocation(teamSection, "ender-chest", team.getEnderChestLocation());
             LocationUtil.saveLocation(teamSection, "item-shop", team.getItemShopLocation());
             LocationUtil.saveLocation(teamSection, "upgrade-shop", team.getUpgradeShopLocation());
 

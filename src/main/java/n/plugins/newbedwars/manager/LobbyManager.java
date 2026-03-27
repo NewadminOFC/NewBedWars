@@ -17,6 +17,7 @@ public class LobbyManager {
     public void setLobby(Location location) {
         LocationUtil.saveLocation(plugin.getConfig(), "lobby.spawn", location);
         plugin.saveConfig();
+        applyWorldRules(location == null ? null : location.getWorld());
     }
 
     public Location getLobby() {
@@ -54,5 +55,41 @@ public class LobbyManager {
 
         player.teleport(target);
         return true;
+    }
+
+    public void applyConfiguredLobbyWorldRules() {
+        Location lobby = getLobby();
+        if (lobby == null || lobby.getWorld() == null) {
+            return;
+        }
+
+        applyWorldRules(lobby.getWorld());
+    }
+
+    private void applyWorldRules(World world) {
+        if (world == null) {
+            return;
+        }
+
+        try {
+            world.setGameRuleValue("doMobSpawning", "false");
+        } catch (Exception ignored) {
+        }
+
+        try {
+            world.setGameRuleValue("doDaylightCycle", "false");
+        } catch (Exception ignored) {
+        }
+
+        try {
+            world.setGameRuleValue("doWeatherCycle", "false");
+        } catch (Exception ignored) {
+        }
+
+        world.setSpawnFlags(false, false);
+        world.setStorm(false);
+        world.setThundering(false);
+        world.setWeatherDuration(0);
+        world.setTime(1000L);
     }
 }

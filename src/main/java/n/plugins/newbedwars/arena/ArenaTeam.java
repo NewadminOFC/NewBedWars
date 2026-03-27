@@ -14,6 +14,8 @@ public class ArenaTeam {
     private final Map<GeneratorType, List<GeneratorPoint>> generators;
     private Location spawnLocation;
     private BedData bedData;
+    private Location teamChestLocation;
+    private Location enderChestLocation;
     private Location itemShopLocation;
     private Location upgradeShopLocation;
     private CuboidRegion islandRegion;
@@ -62,6 +64,24 @@ public class ArenaTeam {
 
     public void setItemShopLocation(Location itemShopLocation) {
         this.itemShopLocation = itemShopLocation == null ? null : itemShopLocation.clone();
+        this.confirmed = false;
+    }
+
+    public Location getTeamChestLocation() {
+        return teamChestLocation == null ? null : teamChestLocation.clone();
+    }
+
+    public void setTeamChestLocation(Location teamChestLocation) {
+        this.teamChestLocation = teamChestLocation == null ? null : teamChestLocation.clone();
+        this.confirmed = false;
+    }
+
+    public Location getEnderChestLocation() {
+        return enderChestLocation == null ? null : enderChestLocation.clone();
+    }
+
+    public void setEnderChestLocation(Location enderChestLocation) {
+        this.enderChestLocation = enderChestLocation == null ? null : enderChestLocation.clone();
         this.confirmed = false;
     }
 
@@ -187,6 +207,12 @@ public class ArenaTeam {
         if (bedData == null || !bedData.isConfigured()) {
             missing.add("Cama");
         }
+        if (teamChestLocation == null) {
+            missing.add("Bau do time");
+        }
+        if (enderChestLocation == null) {
+            missing.add("Ender chest");
+        }
         if (generators.get(GeneratorType.IRON).isEmpty()) {
             missing.add("Gerador de ferro");
         }
@@ -224,6 +250,8 @@ public class ArenaTeam {
         this.spawnLocation = source.getSpawnLocation();
         BedData sourceBed = source.getBedData();
         this.bedData = sourceBed == null ? null : new BedData(sourceBed.getHead(), sourceBed.getFoot());
+        this.teamChestLocation = source.getTeamChestLocation();
+        this.enderChestLocation = source.getEnderChestLocation();
         this.itemShopLocation = source.getItemShopLocation();
         this.upgradeShopLocation = source.getUpgradeShopLocation();
         this.islandRegion = source.getIslandRegion() == null ? null : new CuboidRegion(source.getIslandRegion().getPos1(), source.getIslandRegion().getPos2());

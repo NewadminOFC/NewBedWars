@@ -4,6 +4,7 @@ import java.util.List;
 import n.plugins.newbedwars.NewBedWars;
 import n.plugins.newbedwars.arena.Arena;
 import n.plugins.newbedwars.arena.ArenaTeam;
+import n.plugins.newbedwars.arena.GeneratorType;
 import n.plugins.newbedwars.arena.TeamColor;
 import n.plugins.newbedwars.setup.SetupPointAction;
 import n.plugins.newbedwars.setup.SetupRegionAction;
@@ -26,7 +27,7 @@ public class TeamSetupMenu extends BaseMenu {
 
     @Override
     protected String getTitle() {
-        return "§8Time " + color.getDisplayName();
+        return "\u00A78Time " + color.getDisplayName();
     }
 
     @Override
@@ -39,23 +40,26 @@ public class TeamSetupMenu extends BaseMenu {
         ArenaTeam team = arena.getTeam(color);
         inventory.setItem(10, action(Material.BEACON, "&bDefinir spawn do time", team.getSpawnLocation() != null));
         inventory.setItem(11, action(Material.BED, "&cDefinir cama", team.getBedData() != null && team.getBedData().isConfigured()));
-        inventory.setItem(12, action(Material.IRON_INGOT, "&fDefinir gerador de ferro", !team.getGenerators(n.plugins.newbedwars.arena.GeneratorType.IRON).isEmpty()));
-        inventory.setItem(13, action(Material.GOLD_INGOT, "&6Definir gerador de ouro", !team.getGenerators(n.plugins.newbedwars.arena.GeneratorType.GOLD).isEmpty()));
-        inventory.setItem(14, action(Material.CHEST, "&eDefinir loja de itens", team.getItemShopLocation() != null));
-        inventory.setItem(15, action(Material.ANVIL, "&bDefinir loja de upgrades", team.getUpgradeShopLocation() != null));
-        inventory.setItem(16, action(Material.GRASS, "&aDefinir regiao da ilha", team.getIslandRegion() != null && team.getIslandRegion().isComplete()));
-        inventory.setItem(19, action(Material.OBSIDIAN, "&5Definir protecao inicial", team.getProtectionRegion() != null && team.getProtectionRegion().isComplete()));
+        inventory.setItem(12, action(Material.CHEST, "&6Definir bau do time", team.getTeamChestLocation() != null));
+        inventory.setItem(13, action(Material.ENDER_CHEST, "&5Definir ender chest", team.getEnderChestLocation() != null));
+        inventory.setItem(14, action(Material.IRON_INGOT, "&fDefinir gerador de ferro", !team.getGenerators(GeneratorType.IRON).isEmpty()));
+        inventory.setItem(15, action(Material.GOLD_INGOT, "&6Definir gerador de ouro", !team.getGenerators(GeneratorType.GOLD).isEmpty()));
+        inventory.setItem(16, action(Material.EMERALD, "&eDefinir loja de itens", team.getItemShopLocation() != null));
+        inventory.setItem(19, action(Material.ANVIL, "&bDefinir loja de upgrades", team.getUpgradeShopLocation() != null));
+        inventory.setItem(20, action(Material.GRASS, "&aDefinir regiao da ilha", team.getIslandRegion() != null && team.getIslandRegion().isComplete()));
+        inventory.setItem(21, action(Material.OBSIDIAN, "&5Definir protecao inicial", team.getProtectionRegion() != null && team.getProtectionRegion().isComplete()));
 
         List<String> missing = team.getMissingSetup();
-        inventory.setItem(22, new ItemBuilder(Material.PAPER)
+        inventory.setItem(23, new ItemBuilder(Material.PAPER)
             .name("&fPreview do progresso")
             .lore(
                 "&7Time: " + color.getColoredName(),
-                "&7Confirmado: " + (team.isConfirmed() ? "§aSim" : "§cNao"),
-                "&7Status geral: " + (team.isSetupComplete() ? "§aCompleto" : "§cIncompleto"),
-                "&7Faltando: " + (missing.isEmpty() ? "§aNada" : "§c" + join(missing)),
+                "&7Confirmado: " + (team.isConfirmed() ? "\u00A7aSim" : "\u00A7cNao"),
+                "&7Status geral: " + (team.isSetupComplete() ? "\u00A7aCompleto" : "\u00A7cIncompleto"),
+                "&7Faltando: " + (missing.isEmpty() ? "\u00A7aNada" : "\u00A7c" + join(missing)),
                 "",
-                "&eUse o menu para iniciar cada etapa."
+                "&eEsquerdo: configurar",
+                "&cDireito: limpar"
             ).build());
 
         inventory.setItem(27, new ItemBuilder(Material.ARROW).name("&cVoltar").build());
@@ -74,6 +78,7 @@ public class TeamSetupMenu extends BaseMenu {
             if (team.isSetupComplete()) {
                 team.setConfirmed(true);
                 plugin.getArenaManager().saveArena(arena);
+                plugin.getSetupManager().refreshArenaSetupVisuals(arena);
                 plugin.getMessageManager().send(player, "setup.team-confirmed", java.util.Collections.singletonMap("team", color.getColoredName()));
                 plugin.getMenuManager().openSetupMainMenu(player, arena);
             } else {
@@ -84,31 +89,52 @@ public class TeamSetupMenu extends BaseMenu {
         }
 
         if (slot == 10) {
-            plugin.getSetupManager().beginPointSetup(player, arena, color, SetupPointAction.TEAM_SPAWN);
+            handlePointAction(player, clickType, SetupPointAction.TEAM_SPAWN);
         } else if (slot == 11) {
-            plugin.getSetupManager().beginPointSetup(player, arena, color, SetupPointAction.TEAM_BED);
+            handlePointAction(player, clickType, SetupPointAction.TEAM_BED);
         } else if (slot == 12) {
-            plugin.getSetupManager().beginPointSetup(player, arena, color, SetupPointAction.TEAM_IRON_GENERATOR);
+            handlePointAction(player, clickType, SetupPointAction.TEAM_CHEST);
         } else if (slot == 13) {
-            plugin.getSetupManager().beginPointSetup(player, arena, color, SetupPointAction.TEAM_GOLD_GENERATOR);
+            handlePointAction(player, clickType, SetupPointAction.TEAM_ENDER_CHEST);
         } else if (slot == 14) {
-            plugin.getSetupManager().beginPointSetup(player, arena, color, SetupPointAction.TEAM_ITEM_SHOP);
+            handlePointAction(player, clickType, SetupPointAction.TEAM_IRON_GENERATOR);
         } else if (slot == 15) {
-            plugin.getSetupManager().beginPointSetup(player, arena, color, SetupPointAction.TEAM_UPGRADE_SHOP);
+            handlePointAction(player, clickType, SetupPointAction.TEAM_GOLD_GENERATOR);
         } else if (slot == 16) {
-            plugin.getSetupManager().beginRegionSetup(player, arena, color, SetupRegionAction.TEAM_ISLAND);
+            handlePointAction(player, clickType, SetupPointAction.TEAM_ITEM_SHOP);
         } else if (slot == 19) {
-            plugin.getSetupManager().beginRegionSetup(player, arena, color, SetupRegionAction.TEAM_PROTECTION);
+            handlePointAction(player, clickType, SetupPointAction.TEAM_UPGRADE_SHOP);
+        } else if (slot == 20) {
+            handleRegionAction(player, clickType, SetupRegionAction.TEAM_ISLAND);
+        } else if (slot == 21) {
+            handleRegionAction(player, clickType, SetupRegionAction.TEAM_PROTECTION);
         }
+    }
+
+    private void handlePointAction(Player player, ClickType clickType, SetupPointAction action) {
+        if (clickType.isRightClick()) {
+            plugin.getSetupManager().clearTeamPoint(player, arena, color, action);
+            return;
+        }
+        plugin.getSetupManager().beginPointSetup(player, arena, color, action);
+    }
+
+    private void handleRegionAction(Player player, ClickType clickType, SetupRegionAction action) {
+        if (clickType.isRightClick()) {
+            plugin.getSetupManager().clearTeamRegion(player, arena, color, action);
+            return;
+        }
+        plugin.getSetupManager().beginRegionSetup(player, arena, color, action);
     }
 
     private ItemStack action(Material material, String title, boolean done) {
         return new ItemBuilder(material)
             .name(title)
             .lore(
-                "&7Status: " + (done ? "§aConfigurado" : "§cPendente"),
+                "&7Status: " + (done ? "\u00A7aConfigurado" : "\u00A7cPendente"),
                 "",
-                "&eClique para iniciar"
+                "&eClique esquerdo para configurar",
+                "&cClique direito para limpar"
             ).build();
     }
 

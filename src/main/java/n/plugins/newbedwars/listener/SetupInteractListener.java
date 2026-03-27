@@ -1,7 +1,6 @@
 package n.plugins.newbedwars.listener;
 
 import n.plugins.newbedwars.NewBedWars;
-import org.bukkit.block.Block;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -26,7 +25,6 @@ public class SetupInteractListener implements Listener {
 
         ItemStack item = player.getItemInHand();
         Action action = event.getAction();
-        Block clickedBlock = event.getClickedBlock();
 
         if (plugin.getSetupManager().isMenuItem(item) && (action == Action.RIGHT_CLICK_AIR || action == Action.RIGHT_CLICK_BLOCK)) {
             event.setCancelled(true);
@@ -41,15 +39,22 @@ public class SetupInteractListener implements Listener {
         }
 
         if (action == Action.RIGHT_CLICK_AIR || action == Action.RIGHT_CLICK_BLOCK) {
-            if (plugin.getSetupManager().handlePendingPoint(player, clickedBlock)) {
+            if (plugin.getSetupManager().handlePendingPoint(player, event.getClickedBlock())) {
                 event.setCancelled(true);
                 return;
             }
-        }
 
-        if (plugin.getSetupManager().isSelectionWand(item) && clickedBlock != null && (action == Action.LEFT_CLICK_BLOCK || action == Action.RIGHT_CLICK_BLOCK)) {
-            event.setCancelled(true);
-            plugin.getSetupManager().handleSelection(player, clickedBlock, action == Action.LEFT_CLICK_BLOCK);
+            if (plugin.getSetupManager().isPositionOneItem(item)) {
+                event.setCancelled(true);
+                plugin.getSetupManager().handleSelection(player, true);
+                return;
+            }
+
+            if (plugin.getSetupManager().isPositionTwoItem(item)) {
+                event.setCancelled(true);
+                plugin.getSetupManager().handleSelection(player, false);
+                return;
+            }
         }
     }
 }

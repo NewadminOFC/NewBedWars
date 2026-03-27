@@ -9,6 +9,7 @@ import n.plugins.newbedwars.arena.TeamColor;
 import n.plugins.newbedwars.util.LocationUtil;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
+import org.bukkit.block.Chest;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.TNTPrimed;
 import org.bukkit.event.EventHandler;
@@ -20,6 +21,8 @@ import org.bukkit.event.block.Action;
 import org.bukkit.event.entity.EntityExplodeEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.metadata.FixedMetadataValue;
+import org.bukkit.inventory.Inventory;
+import org.bukkit.inventory.ItemStack;
 
 public class GameBlockListener implements Listener {
 
@@ -101,7 +104,7 @@ public class GameBlockListener implements Listener {
 
     @EventHandler
     public void onInteract(PlayerInteractEvent event) {
-        if (event.getAction() != Action.RIGHT_CLICK_BLOCK) {
+        if (event.getAction() != Action.RIGHT_CLICK_BLOCK && event.getAction() != Action.LEFT_CLICK_BLOCK) {
             return;
         }
 
@@ -116,6 +119,36 @@ public class GameBlockListener implements Listener {
 
         Block block = event.getClickedBlock();
         if (block == null) {
+            return;
+        }
+
+        ArenaTeam blockTeam = getTeamByTeamChest(arena, block);
+        if (blockTeam != null) {
+            event.setCancelled(true);
+            if (plugin.getTeamManager().getColor(arena, player.getUniqueId()) != blockTeam.getColor()) {
+                return;
+            }
+
+            if (event.getAction() == Action.LEFT_CLICK_BLOCK) {
+                storeHandItemInTeamChest(player, block);
+            } else {
+                openTeamChest(player, block);
+            }
+            return;
+        }
+
+        ArenaTeam enderTeam = getTeamByEnderChest(arena, block);
+        if (enderTeam != null) {
+            event.setCancelled(true);
+            if (event.getAction() == Action.LEFT_CLICK_BLOCK) {
+                storeHandItemInInventory(player, player.getEnderChest());
+            } else {
+                player.openInventory(player.getEnderChest());
+            }
+            return;
+        }
+
+        if (event.getAction() != Action.RIGHT_CLICK_BLOCK) {
             return;
         }
 
@@ -140,6 +173,34 @@ public class GameBlockListener implements Listener {
 
     private boolean isShopMarker(Arena arena, Block block) {
         return isItemShop(arena, block) || isUpgradeShop(arena, block);
+    }
+
+    private ArenaTeam getTeamByTeamChest(Arena arena, Block block) {
+        for (TeamColor color : plugin.getTeamManager().getActiveColors()) {
+            ArenaTeam team = arena.getTeam(color);
+            if (team == null) {
+                continue;
+            }
+
+            if (LocationUtil.sameBlock(arena.getMatchLocation(team.getTeamChestLocation()), block.getLocation())) {
+                return team;
+            }
+        }
+        return null;
+    }
+
+    private ArenaTeam getTeamByEnderChest(Arena arena, Block block) {
+        for (TeamColor color : plugin.getTeamManager().getActiveColors()) {
+            ArenaTeam team = arena.getTeam(color);
+            if (team == null) {
+                continue;
+            }
+
+            if (LocationUtil.sameBlock(arena.getMatchLocation(team.getEnderChestLocation()), block.getLocation())) {
+                return team;
+            }
+        }
+        return null;
     }
 
     private boolean isItemShop(Arena arena, Block block) {
@@ -346,5 +407,53 @@ public class GameBlockListener implements Listener {
             player.setItemInHand(hand);
         }
         player.updateInventory();
+    }
+
+    private void openTeamChest(Player player, Block block) {
+        if (player == null || block == null || !(block.getState() instanceof Chest)) {
+            return;
+        }
+
+        player.openInventory(((Chest) block.getState()).getInventory());
+    }
+
+    private void storeHandItemInTeamChest(Player player, Block block) {
+        if (player == null || block == null || !(block.getState() instanceof Chest)) {
+            return;
+        }
+
+        Chest chestState = (Chest) block.getState();
+        storeHandItemInInventory(player, chestState.getInventory());
+        chestState.update();
+    }
+
+    private void storeHandItemInInventory(Player player, Inventory inventory) {
+        if (player == null || inventory == null) {
+            return;
+        }
+
+        ItemStack hand = player.getItemInHand();
+        if (hand == null || hand.getType() == Material.AIR || isSword(hand.getType())) {
+            return;
+        }
+
+        ItemStack toStore = hand.clone();
+        java.util.HashMap<Integer, ItemStack> leftovers = inventory.addItem(toStore);
+        if (leftovers.isEmpty()) {
+            player.setItemInHand(null);
+        } else {
+            ItemStack leftover = leftovers.values().iterator().next();
+            player.setItemInHand(leftover);
+        }
+
+        player.updateInventory();
+    }
+
+    private boolean isSword(Material material) {
+        return material == Material.WOOD_SWORD
+            || material == Material.STONE_SWORD
+            || material == Material.IRON_SWORD
+            || material == Material.DIAMOND_SWORD
+            || material == Material.GOLD_SWORD;
     }
 }

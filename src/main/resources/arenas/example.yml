@@ -31,9 +31,13 @@ teams:
     bed:
       head: null
       foot: null
+    team-chest: null
+    ender-chest: null
     generators:
-      IRON: []
-      GOLD: []
+      IRON: {}
+      GOLD: {}
+      DIAMOND: {}
+      EMERALD: {}
     item-shop: null
     upgrade-shop: null
     island-region:
@@ -42,3 +46,27 @@ teams:
     protection-region:
       pos1: null
       pos2: null
+  BLUE:
+    confirmed: false
+    spawn: null
+    bed:
+      head: null
+      foot: null
+    team-chest: null
+    ender-chest: null
+    generators:
+      IRON: {}
+      GOLD: {}
+      DIAMOND: {}
+      EMERALD: {}
+    item-shop: null
+    upgrade-shop: null
+    island-region:
+      pos1: null
+      pos2: null
+    protection-region:
+      pos1: null
+      pos2: null
+global-generators:
+  DIAMOND: {}
+  EMERALD: {}

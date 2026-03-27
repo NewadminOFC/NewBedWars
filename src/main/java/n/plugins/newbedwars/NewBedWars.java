@@ -64,6 +64,7 @@ public final class NewBedWars extends JavaPlugin {
         this.worldCloneManager = new WorldCloneManager(this);
 
         this.messageManager.reload();
+        this.lobbyManager.applyConfiguredLobbyWorldRules();
         this.worldCloneManager.startupCleanup();
         this.arenaManager.loadArenas();
         registerCommands();
@@ -93,6 +94,14 @@ public final class NewBedWars extends JavaPlugin {
 
         if (npcManager != null) {
             npcManager.shutdown();
+        }
+
+        if (hologramManager != null) {
+            hologramManager.shutdown();
+        }
+
+        if (setupManager != null) {
+            setupManager.shutdown();
         }
 
         if (worldCloneManager != null) {

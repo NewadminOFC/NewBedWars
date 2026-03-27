@@ -8,6 +8,8 @@ settings:
   sounds: true
   titles: false
   holograms: false
+  setup-holograms: true
+  team-chest-holograms: true
   spectators-can-fly: true
 
 lobby: {}
@@ -36,6 +38,10 @@ npc:
     hologram-bottom: "&eClique para abrir"
     hologram-top-height: 1.18
     hologram-bottom-height: 0.9
+
+team-chest-hologram:
+  top: "&6&lBAU"
+  bottom: "&eClique para guardar"
 
 pre-game-items:
   team-selector:

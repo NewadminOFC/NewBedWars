@@ -2,6 +2,8 @@ package n.plugins.newbedwars.manager;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.util.Map;
 import n.plugins.newbedwars.NewBedWars;
 import n.plugins.newbedwars.util.ChatUtil;
@@ -22,6 +24,19 @@ public class MessageManager {
     public void reload() {
         this.file = new File(plugin.getDataFolder(), "messages.yml");
         this.configuration = YamlConfiguration.loadConfiguration(file);
+
+        InputStream resource = plugin.getResource("messages.yml");
+        if (resource != null) {
+            try {
+                YamlConfiguration defaults = YamlConfiguration.loadConfiguration(new InputStreamReader(resource));
+                this.configuration.setDefaults(defaults);
+            } finally {
+                try {
+                    resource.close();
+                } catch (IOException ignored) {
+                }
+            }
+        }
     }
 
     public FileConfiguration getConfiguration() {
