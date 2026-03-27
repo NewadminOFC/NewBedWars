@@ -766,7 +766,7 @@ Caso o `mvn` nao esteja no `PATH`, existe Maven local no projeto:
 Jar final:
 
 ```text
-target/NewBedWars-1.0.0.jar
+target/NewBedWars-1.0-beta.jar
 ```
 
 ## Troubleshooting

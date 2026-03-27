@@ -6,7 +6,7 @@
 
     <groupId>n.plugins</groupId>
     <artifactId>NewBedWars</artifactId>
-    <version>1.0.0</version>
+    <version>1.0-beta</version>
     <packaging>jar</packaging>
 
     <name>NewBedWars</name>
