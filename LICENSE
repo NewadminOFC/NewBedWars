@@ -1,96 +1,98 @@
-NewBedWars Source-Available License 1.0
+Licenca Source-Available do NewBedWars 1.0
 
 Copyright (c) 2026 NewadminOFC
-All rights reserved.
+Todos os direitos reservados.
 
-1. Definitions
+1. Definicoes
 
-"Software" means the NewBedWars source code, compiled binaries, resource
-files, configuration templates, and any files distributed with this
-repository.
+"Software" significa o codigo-fonte do NewBedWars, os binarios compilados,
+arquivos de recursos, modelos de configuracao e quaisquer arquivos
+distribuidos com este repositorio.
 
-"Licensor" means the copyright holder of the Software.
+"Licenciante" significa o titular dos direitos autorais do Software.
 
-"External Integration" means a separate and independent work that interacts
-with the Software without modifying the Software itself. Examples include:
+"Integracao Externa" significa uma obra separada e independente que interage
+com o Software sem modificar o proprio Software. Exemplos incluem:
 
-- configuration changes made through supported config files
-- separate plugins or addons that use public APIs, commands, events or
-  integration points
-- scripts, panels, launchers or deployment tools that install, manage or
-  communicate with the Software from the outside
+- alteracoes de configuracao feitas por meio de arquivos de configuracao
+  suportados
+- plugins ou addons separados que usam APIs publicas, comandos, eventos ou
+  pontos de integracao
+- scripts, paineis, launchers ou ferramentas de deploy que instalam,
+  gerenciam ou se comunicam com o Software externamente
 
-"Modification" means any direct change to the Software itself, including but
-not limited to editing, patching, decompiling for alteration, recompiling a
-changed version, merging code into the Software, altering packaged classes,
-changing bundled resources, or distributing a derivative work based on the
+"Modificacao" significa qualquer alteracao direta no proprio Software,
+incluindo, sem se limitar a, editar, aplicar patch, descompilar para alterar,
+recompilar uma versao modificada, mesclar codigo ao Software, alterar classes
+empacotadas, mudar recursos incluidos ou distribuir obra derivada baseada no
 Software.
 
-2. Limited Permission
+2. Permissao Limitada
 
-Subject to this license, you are allowed to:
+Sujeito a esta licenca, voce pode:
 
-- use the Software in private or public servers
-- copy and run unmodified versions of the Software
-- distribute unmodified copies of the Software, provided this license and all
-  copyright notices remain intact
-- create and use External Integrations
+- usar o Software em servidores privados ou publicos
+- copiar e executar versoes nao modificadas do Software
+- distribuir copias nao modificadas do Software, desde que esta licenca e
+  todos os avisos de direitos autorais sejam mantidos intactos
+- criar e usar Integracoes Externas
 
-3. Prohibited Actions
+3. Acoes Proibidas
 
-You may not, without prior written permission from the Licensor:
+Voce nao pode, sem permissao previa e por escrito do Licenciante:
 
-- modify the Software
-- create or distribute modified source code
-- create or distribute modified binaries or patched jar files
-- publish forks whose purpose is to distribute a modified version of the
+- modificar o Software
+- criar ou distribuir codigo-fonte modificado
+- criar ou distribuir binarios modificados ou jars alterados
+- publicar forks cuja finalidade seja distribuir uma versao modificada do
   Software
-- remove, hide or alter copyright, authorship or license notices
-- sublicense the Software under different terms
+- remover, ocultar ou alterar avisos de copyright, autoria ou licenca
+- sublicenciar o Software sob termos diferentes
 
-4. Clarification About External Integrations
+4. Esclarecimento Sobre Integracoes Externas
 
-External Integrations are allowed as long as they remain separate works and do
-not include or distribute a modified version of the Software.
+Integracoes Externas sao permitidas desde que continuem sendo obras separadas
+e nao incluam nem distribuam versao modificada do Software.
 
-For clarity, the following are allowed:
+Para deixar claro, os seguintes usos sao permitidos:
 
-- creating a plugin that hooks into supported behavior from outside
-- changing server files, startup scripts or configs that the Software already
-  supports
-- building dashboards, wrappers or automation around the Software
+- criar um plugin que se conecte a comportamentos suportados externamente
+- alterar arquivos do servidor, scripts de inicializacao ou configuracoes que
+  o Software ja suporte
+- construir dashboards, wrappers ou automacoes em volta do Software
 
-The following are not allowed without written permission:
+Os seguintes usos nao sao permitidos sem autorizacao por escrito:
 
-- editing the source code and compiling your own version
-- unpacking or patching the jar to change behavior
-- distributing a customized build
-- copying parts of the source into another project in modified form
+- editar o codigo-fonte e compilar sua propria versao
+- desempacotar ou aplicar patch no jar para mudar comportamento
+- distribuir uma build personalizada
+- copiar partes do codigo-fonte para outro projeto em forma modificada
 
-5. Ownership
+5. Titularidade
 
-This license does not transfer ownership of the Software. All rights not
-expressly granted by this license remain reserved to the Licensor.
+Esta licenca nao transfere a propriedade do Software. Todos os direitos que
+nao forem expressamente concedidos por esta licenca permanecem reservados ao
+Licenciante.
 
-6. Termination
+6. Rescisao
 
-Any use that violates this license automatically terminates the permissions
-granted under it.
+Qualquer uso que viole esta licenca encerra automaticamente as permissoes
+concedidas por ela.
 
-7. No Warranty
+7. Ausencia de Garantia
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NON-INFRINGEMENT.
+O SOFTWARE E FORNECIDO "COMO ESTA", SEM GARANTIA DE QUALQUER TIPO, EXPRESSA
+OU IMPLICITA, INCLUINDO, SEM LIMITACAO, GARANTIAS DE COMERCIALIZACAO,
+ADEQUACAO A UM DETERMINADO FIM E NAO INFRACAO.
 
-8. Limitation of Liability
+8. Limitacao de Responsabilidade
 
-IN NO EVENT SHALL THE LICENSOR BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+EM NENHUMA HIPOTESE O LICENCIANTE SERA RESPONSAVEL POR QUALQUER REIVINDICACAO,
+DANO OU OUTRA RESPONSABILIDADE, SEJA EM ACAO CONTRATUAL, EXTRACONTRATUAL OU DE
+OUTRA NATUREZA, DECORRENTE DE, RESULTANTE DE OU RELACIONADA AO SOFTWARE OU AO
+USO OU OUTRAS OPERACOES COM O SOFTWARE.
 
-9. Contact for Commercial or Special Permission
+9. Contato para Permissao Comercial ou Especial
 
-If you want permission to modify, redistribute a modified build, or negotiate
-different terms, contact the Licensor directly.
+Se voce quiser permissao para modificar, redistribuir uma build modificada ou
+negociar termos diferentes, entre em contato diretamente com o Licenciante.
