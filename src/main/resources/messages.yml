@@ -60,6 +60,7 @@ game:
   left: "%prefix%&eVoce saiu da arena."
   join-broadcast: "&7%player% &eentrou na sala &b(%players%/%max_players%)"
   leave-broadcast: "&7%player% &esaiu da sala &b(%players%/%max_players%)"
+  leave-ingame-broadcast: "&7%player% &csaiu da partida e perdeu sua cama."
   arena-not-ready: "%prefix%&cEsta arena ainda nao esta pronta para uso."
   arena-full: "%prefix%&cEsta arena esta lotada."
   arena-running: "%prefix%&cA partida desta arena ja comecou."

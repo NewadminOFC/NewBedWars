@@ -32,6 +32,7 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityDamageEvent;
+import org.bukkit.event.entity.EntityDeathEvent;
 import org.bukkit.event.entity.EntityExplodeEvent;
 import org.bukkit.event.entity.ProjectileHitEvent;
 import org.bukkit.event.player.PlayerEggThrowEvent;
@@ -86,6 +87,7 @@ public class GameItemListener implements Listener {
         }
 
         if (arena.getSpectators().contains(player.getUniqueId()) || plugin.getGameManager().isRespawning(player.getUniqueId())) {
+            cancelUse(event);
             return;
         }
 
@@ -221,6 +223,17 @@ public class GameItemListener implements Listener {
         }
 
         event.setCancelled(true);
+    }
+
+    @EventHandler(priority = EventPriority.HIGHEST)
+    public void onSupportMobDeath(EntityDeathEvent event) {
+        Entity entity = event.getEntity();
+        if (!(entity instanceof IronGolem) || !isSupportMob(entity)) {
+            return;
+        }
+
+        event.getDrops().clear();
+        event.setDroppedExp(0);
     }
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)

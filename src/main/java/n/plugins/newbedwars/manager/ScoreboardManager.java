@@ -134,6 +134,8 @@ public class ScoreboardManager {
                 updateArena(player, arena);
             }
         }
+
+        updateVisibility();
     }
 
     private void updateLobby(Player player) {
@@ -265,7 +267,7 @@ public class ScoreboardManager {
             .replace("%status%", arena == null ? "Lobby" : arena.getState().getDisplayName())
             .replace("%players%", arena == null ? "0" : String.valueOf(arena.getPlayerCount()))
             .replace("%alive_players%", arena == null ? "0" : String.valueOf(arena.getAlivePlayers()))
-            .replace("%min_players%", String.valueOf(arena == null ? plugin.getGameManager().getArenaCapacity() : plugin.getGameManager().getArenaCapacity(arena)))
+            .replace("%min_players%", String.valueOf(arena == null ? plugin.getGameManager().getRequiredPlayersToStart() : plugin.getGameManager().getRequiredPlayersToStart(arena)))
             .replace("%max_players%", String.valueOf(arena == null ? plugin.getGameManager().getArenaCapacity() : plugin.getGameManager().getArenaCapacity(arena)))
             .replace("%countdown%", arena == null ? "0" : String.valueOf(arena.getState() == ArenaState.ENDING ? arena.getEndCountdown() : arena.getCountdown()))
             .replace("%time%", arena == null ? "00:00" : TimeUtil.formatSeconds(arena.getElapsedTime()))
@@ -427,6 +429,10 @@ public class ScoreboardManager {
     private void updatePlayerList(BoardContext context, Player viewer, Arena viewerArena) {
         Map<String, Team> activeTeams = new HashMap<String, Team>();
         for (Player target : Bukkit.getOnlinePlayers()) {
+            if (!shouldSeeTarget(viewer, target)) {
+                continue;
+            }
+
             PlayerListStyle style = resolvePlayerListStyle(viewerArena, target);
             String teamName = buildPlayerListTeamName(style, target);
             Team team = context.playerListTeams.get(teamName);
@@ -462,6 +468,45 @@ public class ScoreboardManager {
 
         context.playerListTeams.clear();
         context.playerListTeams.putAll(activeTeams);
+    }
+
+    private void updateVisibility() {
+        List<Player> players = new ArrayList<Player>(Bukkit.getOnlinePlayers());
+        for (Player viewer : players) {
+            if (viewer == null || !viewer.isOnline()) {
+                continue;
+            }
+
+            for (Player target : players) {
+                if (target == null || !target.isOnline() || viewer.equals(target)) {
+                    continue;
+                }
+
+                if (shouldSeeTarget(viewer, target)) {
+                    viewer.showPlayer(target);
+                } else {
+                    viewer.hidePlayer(target);
+                }
+            }
+        }
+    }
+
+    private boolean shouldSeeTarget(Player viewer, Player target) {
+        if (viewer == null || target == null) {
+            return false;
+        }
+
+        if (!viewer.getWorld().equals(target.getWorld())) {
+            return false;
+        }
+
+        Arena targetArena = plugin.getArenaManager().getArenaByPlayer(target.getUniqueId());
+        if (targetArena == null) {
+            return true;
+        }
+
+        return !targetArena.getSpectators().contains(target.getUniqueId())
+            && !plugin.getGameManager().isRespawning(target.getUniqueId());
     }
 
     private void clearPlayerListTeams(BoardContext context) {

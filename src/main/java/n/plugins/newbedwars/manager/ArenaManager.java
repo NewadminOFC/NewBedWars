@@ -102,6 +102,28 @@ public class ArenaManager {
         return arenaName == null ? null : getArena(arenaName);
     }
 
+    public Arena getArenaByWorld(World world) {
+        if (world == null) {
+            return null;
+        }
+
+        for (Arena arena : runtimeArenas.values()) {
+            World matchWorld = arena.getMatchWorld();
+            if (matchWorld != null && matchWorld.getName().equalsIgnoreCase(world.getName())) {
+                return arena;
+            }
+        }
+
+        for (Arena arena : configuredArenas.values()) {
+            World templateWorld = arena.getWorld();
+            if (templateWorld != null && templateWorld.getName().equalsIgnoreCase(world.getName())) {
+                return arena;
+            }
+        }
+
+        return null;
+    }
+
     public void setPlayerArena(UUID uniqueId, Arena arena) {
         if (uniqueId == null || arena == null) {
             return;
@@ -122,6 +144,9 @@ public class ArenaManager {
         Arena best = null;
         for (Arena arena : runtimeArenas.values()) {
             if (!arena.getTemplateName().equalsIgnoreCase(template.getTemplateName())) {
+                continue;
+            }
+            if (arena.hasStartedMatch()) {
                 continue;
             }
             if (arena.getState() != ArenaState.WAITING && arena.getState() != ArenaState.STARTING) {

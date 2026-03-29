@@ -10,6 +10,7 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.FoodLevelChangeEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
+import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.event.player.PlayerKickEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
@@ -34,12 +35,33 @@ public class GamePlayerListener implements Listener {
     }
 
     @EventHandler
+    public void onJoin(PlayerJoinEvent event) {
+        String message = event.getJoinMessage();
+        event.setJoinMessage(null);
+        broadcastWorldMessage(event.getPlayer(), message);
+    }
+
+    @EventHandler
     public void onQuit(PlayerQuitEvent event) {
+        if (plugin.getArenaManager().getArenaByPlayer(event.getPlayer().getUniqueId()) != null) {
+            event.setQuitMessage(null);
+        } else {
+            String message = event.getQuitMessage();
+            event.setQuitMessage(null);
+            broadcastWorldMessage(event.getPlayer(), message);
+        }
         handleLeave(event.getPlayer());
     }
 
     @EventHandler
     public void onKick(PlayerKickEvent event) {
+        if (plugin.getArenaManager().getArenaByPlayer(event.getPlayer().getUniqueId()) != null) {
+            event.setLeaveMessage(null);
+        } else {
+            String message = event.getLeaveMessage();
+            event.setLeaveMessage(null);
+            broadcastWorldMessage(event.getPlayer(), message);
+        }
         handleLeave(event.getPlayer());
     }
 
@@ -132,5 +154,19 @@ public class GamePlayerListener implements Listener {
             return plugin.getConfig().getBoolean("anti-void", true);
         }
         return plugin.getConfig().getBoolean("anti-void.enabled", true);
+    }
+
+    private void broadcastWorldMessage(Player source, String message) {
+        if (source == null || source.getWorld() == null || message == null || message.trim().isEmpty()) {
+            return;
+        }
+
+        for (Player viewer : source.getWorld().getPlayers()) {
+            if (viewer == null || !viewer.isOnline() || viewer.equals(source)) {
+                continue;
+            }
+
+            viewer.sendMessage(message);
+        }
     }
 }

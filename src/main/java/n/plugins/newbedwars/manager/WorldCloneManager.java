@@ -2,13 +2,16 @@ package n.plugins.newbedwars.manager;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 import n.plugins.newbedwars.NewBedWars;
 import n.plugins.newbedwars.arena.Arena;
 import org.bukkit.Bukkit;
+import org.bukkit.Location;
 import org.bukkit.World;
 import org.bukkit.WorldCreator;
+import org.bukkit.entity.Player;
 
 public class WorldCloneManager {
 
@@ -104,11 +107,41 @@ public class WorldCloneManager {
         String cloneName = arena.getActiveWorldName();
         World cloneWorld = Bukkit.getWorld(cloneName);
         if (cloneWorld != null) {
+            evacuatePlayers(cloneWorld);
             Bukkit.unloadWorld(cloneWorld, false);
         }
 
         deleteDirectory(new File(getServerRoot(), cloneName));
         arena.clearActiveWorld();
+    }
+
+    private void evacuatePlayers(World cloneWorld) {
+        if (cloneWorld == null) {
+            return;
+        }
+
+        Location safeLocation = plugin.getLobbyManager().getMainWorldSpawn();
+        if (safeLocation == null) {
+            for (World world : Bukkit.getWorlds()) {
+                if (world != null && !world.getName().equalsIgnoreCase(cloneWorld.getName())) {
+                    safeLocation = world.getSpawnLocation();
+                    break;
+                }
+            }
+        }
+
+        if (safeLocation == null) {
+            return;
+        }
+
+        for (Player player : new ArrayList<Player>(cloneWorld.getPlayers())) {
+            if (player == null || !player.isOnline()) {
+                continue;
+            }
+
+            player.closeInventory();
+            player.teleport(safeLocation);
+        }
     }
 
     private File getServerRoot() {

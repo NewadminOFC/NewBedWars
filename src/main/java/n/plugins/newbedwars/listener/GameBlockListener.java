@@ -21,6 +21,7 @@ import org.bukkit.event.block.BlockExplodeEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.entity.EntityExplodeEvent;
+import org.bukkit.event.entity.ItemSpawnEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.metadata.FixedMetadataValue;
 import org.bukkit.inventory.Inventory;
@@ -133,9 +134,13 @@ public class GameBlockListener implements Listener {
             }
         }
 
-        if (arena.getState() != ArenaState.INGAME
-            || arena.getSpectators().contains(player.getUniqueId())
+        if (arena.getSpectators().contains(player.getUniqueId())
             || plugin.getGameManager().isRespawning(player.getUniqueId())) {
+            event.setCancelled(true);
+            return;
+        }
+
+        if (arena.getState() != ArenaState.INGAME) {
             return;
         }
 
@@ -192,6 +197,31 @@ public class GameBlockListener implements Listener {
     @EventHandler
     public void onBlockExplode(BlockExplodeEvent event) {
         filterExplosion(event.blockList(), event.getBlock().getLocation());
+    }
+
+    @EventHandler
+    public void onItemSpawn(ItemSpawnEvent event) {
+        if (event == null || event.getLocation() == null || event.getLocation().getWorld() == null) {
+            return;
+        }
+
+        ItemStack item = event.getEntity() == null ? null : event.getEntity().getItemStack();
+        if (item == null) {
+            return;
+        }
+
+        Material type = item.getType();
+        if (type != Material.BED && type != Material.BED_BLOCK) {
+            return;
+        }
+
+        Arena arena = findArenaByWorld(event.getLocation().getWorld().getName());
+        if (arena == null) {
+            return;
+        }
+
+        event.setCancelled(true);
+        event.getEntity().remove();
     }
 
     private boolean isShopMarker(Arena arena, Block block) {

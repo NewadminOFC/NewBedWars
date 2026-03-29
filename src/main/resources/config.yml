@@ -1,7 +1,18 @@
 settings:
   min-players: 2
+  mode-min-players:
+    1v1: 2
+    2v2: 4
+    3v3: 6
+    4v4: 8
+    solo: 3
+    dupla: 4
+    trio: 6
+    quarteto: 8
   max-players: 2
   countdown-seconds: 10
+  dynamic-start-countdown: true
+  force-start-countdown: 5
   ending-seconds: 30
   respawn-seconds: 5
   start-countdown-chat: true
@@ -1361,7 +1372,7 @@ tablist:
         suffix: ""
       blue:
         order: "20"
-        prefix: "&b[A] &b"
+        prefix: "&9[A] &9"
         suffix: ""
       green:
         order: "30"

@@ -62,6 +62,9 @@ public class BedWarsCommand implements CommandExecutor, TabCompleter {
         if (subCommand.equals("reload")) {
             return handleReload(sender);
         }
+        if (subCommand.equals("start")) {
+            return handleStart(sender);
+        }
         if (subCommand.equals("npc")) {
             return handleNpc(sender, args);
         }
@@ -283,6 +286,33 @@ public class BedWarsCommand implements CommandExecutor, TabCompleter {
         return true;
     }
 
+    private boolean handleStart(CommandSender sender) {
+        if (!hasAdmin(sender)) {
+            return true;
+        }
+        if (!(sender instanceof Player)) {
+            plugin.getMessageManager().send(sender, "general.player-only");
+            return true;
+        }
+
+        Player player = (Player) sender;
+        Arena arena = plugin.getArenaManager().getArenaByPlayer(player.getUniqueId());
+        if (arena == null) {
+            arena = plugin.getArenaManager().getArenaByWorld(player.getWorld());
+        }
+        if (arena == null) {
+            sender.sendMessage(plugin.getMessageManager().get("prefix") + "§cNenhuma arena BedWars foi encontrada neste mundo.");
+            return true;
+        }
+        if (!plugin.getGameManager().speedUpStart(arena)) {
+            plugin.getMessageManager().send(sender, "game.not-enough-players");
+            return true;
+        }
+
+        sender.sendMessage(plugin.getMessageManager().get("prefix") + "§aA partida da arena §f" + arena.getDisplayName() + " §avai iniciar mais rapido.");
+        return true;
+    }
+
     private boolean handleNpc(CommandSender sender, String[] args) {
         if (!hasAdmin(sender)) {
             return true;
@@ -380,7 +410,7 @@ public class BedWarsCommand implements CommandExecutor, TabCompleter {
     @Override
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
         if (args.length == 1) {
-            return partial(args[0], Arrays.asList("create", "delete", "list", "mode", "setup", "setlobby", "join", "leave", "npc", "reload"));
+            return partial(args[0], Arrays.asList("create", "delete", "list", "mode", "setup", "setlobby", "join", "leave", "start", "npc", "reload"));
         }
 
         if (args.length == 2 && Arrays.asList("delete", "setup", "join", "mode").contains(args[0].toLowerCase())) {

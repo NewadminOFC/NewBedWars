@@ -43,6 +43,7 @@ public class Arena {
     private Double antiVoidY;
     private ArenaState state;
     private boolean ready;
+    private boolean matchStarted;
     private int countdown;
     private int elapsedTime;
     private int endCountdown;
@@ -73,6 +74,7 @@ public class Arena {
         this.placedBlocks = new HashSet<BlockPosition>();
         this.mode = BedWarsMode.ONE_VS_ONE;
         this.state = ArenaState.WAITING;
+        this.matchStarted = false;
     }
 
     public String getName() {
@@ -218,6 +220,14 @@ public class Arena {
 
     public void setReady(boolean ready) {
         this.ready = ready;
+    }
+
+    public boolean hasStartedMatch() {
+        return matchStarted;
+    }
+
+    public void markMatchStarted() {
+        this.matchStarted = true;
     }
 
     public Set<UUID> getPlayers() {
@@ -416,6 +426,9 @@ public class Arena {
         this.restoreSnapshots();
         this.clearPlacedBlocks();
         this.clearActiveWorld();
+        if (!runtimeInstance) {
+            this.matchStarted = false;
+        }
         for (ArenaTeam team : teams.values()) {
             team.resetRuntime();
         }
@@ -428,6 +441,7 @@ public class Arena {
         copy.waitingRegion = waitingRegion == null ? null : new CuboidRegion(waitingRegion.getPos1(), waitingRegion.getPos2());
         copy.antiVoidY = antiVoidY;
         copy.ready = ready;
+        copy.matchStarted = false;
 
         for (TeamColor color : TeamColor.values()) {
             ArenaTeam source = teams.get(color);

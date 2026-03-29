@@ -24,6 +24,8 @@ import org.bukkit.GameMode;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.Sound;
+import org.bukkit.block.Block;
+import org.bukkit.block.BlockState;
 import org.bukkit.entity.Player;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.player.PlayerRespawnEvent;
@@ -102,6 +104,18 @@ public class GameManager {
         return plugin.getTeamManager().getArenaCapacity(arena);
     }
 
+    public int getRequiredPlayersToStart() {
+        return getRequiredPlayersToStart(null);
+    }
+
+    public int getRequiredPlayersToStart(Arena arena) {
+        BedWarsMode mode = arena == null ? BedWarsMode.ONE_VS_ONE : arena.getMode();
+        int capacity = arena == null ? getArenaCapacity() : getArenaCapacity(arena);
+        int legacyFallback = plugin.getConfig().getInt("settings.min-players", capacity);
+        int configured = plugin.getConfig().getInt("settings.mode-min-players." + mode.getId(), legacyFallback);
+        return Math.max(1, Math.min(configured, capacity));
+    }
+
     public boolean isRespawning(UUID uniqueId) {
         return uniqueId != null && pendingRespawns.containsKey(uniqueId);
     }
@@ -138,6 +152,7 @@ public class GameManager {
             clearPendingRespawn(uniqueId);
             player.getInventory().clear();
             player.getInventory().setArmorContents(null);
+            player.getEnderChest().clear();
             player.setItemOnCursor(null);
             player.setCanPickupItems(false);
             for (PotionEffect effect : new ArrayList<PotionEffect>(player.getActivePotionEffects())) {
@@ -268,7 +283,10 @@ public class GameManager {
             return;
         }
 
-        boolean wasIngame = arena.getState() == ArenaState.INGAME;
+        ArenaState previousState = arena.getState();
+        boolean wasIngame = previousState == ArenaState.INGAME;
+        boolean wasPreGame = previousState == ArenaState.WAITING || previousState == ArenaState.STARTING;
+        ArenaTeam leavingTeam = plugin.getTeamManager().getTeam(arena, player.getUniqueId());
         clearPendingRespawn(player.getUniqueId());
         arena.removePlayer(player.getUniqueId());
         plugin.getTeamManager().unassign(arena, player.getUniqueId());
@@ -280,15 +298,24 @@ public class GameManager {
         }
 
         plugin.getMessageManager().send(player, "game.left");
-        broadcast(arena, "game.leave-broadcast", placeholders(
-            "player", player.getName(),
-            "players", String.valueOf(arena.getPlayerCount()),
-            "max_players", String.valueOf(getArenaCapacity(arena))
-        ));
+        if (wasPreGame) {
+            broadcast(arena, "game.leave-broadcast", placeholders(
+                "player", player.getName(),
+                "players", String.valueOf(arena.getPlayerCount()),
+                "max_players", String.valueOf(getArenaCapacity(arena))
+            ));
+        } else if (wasIngame) {
+            destroyTeamBedOnLeave(arena, leavingTeam, player.getName());
+            broadcast(arena, "game.leave-ingame-broadcast", placeholders(
+                "player", player.getName(),
+                "players", String.valueOf(arena.getPlayerCount()),
+                "max_players", String.valueOf(getArenaCapacity(arena))
+            ));
+        }
 
         if (wasIngame) {
             checkWin(arena);
-        } else if (arena.getPlayerCount() < getRequiredPlayersToStart(arena)) {
+        } else if (wasPreGame && arena.getPlayerCount() < getRequiredPlayersToStart(arena)) {
             arena.setState(ArenaState.WAITING);
             arena.setCountdown(0);
         }
@@ -506,7 +533,7 @@ public class GameManager {
             if (arena.getState() == ArenaState.WAITING) {
                 if (arena.getPlayerCount() >= getRequiredPlayersToStart(arena)) {
                     arena.setState(ArenaState.STARTING);
-                    arena.setCountdown(getStartingCountdown());
+                    arena.setCountdown(getStartingCountdown(arena));
                 }
             } else if (arena.getState() == ArenaState.STARTING) {
                 handleStartingTick(arena);
@@ -535,17 +562,23 @@ public class GameManager {
         }
 
         int seconds = arena.getCountdown();
-        if (seconds > 0 && (seconds == 10 || seconds <= 5) && plugin.getConfig().getBoolean("settings.start-countdown-chat", true)) {
-            broadcast(arena, "game.countdown", Collections.singletonMap("seconds", String.valueOf(seconds)));
-        }
-
-        if (seconds > 0 && (seconds == 10 || seconds <= 5)) {
-            playCountdownSounds(arena);
-        }
-
         if (seconds <= 0) {
             startGame(arena);
             return;
+        }
+
+        int targetCountdown = getStartingCountdown(arena);
+        if (targetCountdown > 0 && seconds > targetCountdown) {
+            arena.setCountdown(targetCountdown);
+            seconds = targetCountdown;
+        }
+
+        if (seconds > 0 && shouldAnnounceCountdown(seconds) && plugin.getConfig().getBoolean("settings.start-countdown-chat", true)) {
+            broadcast(arena, "game.countdown", Collections.singletonMap("seconds", String.valueOf(seconds)));
+        }
+
+        if (seconds > 0 && shouldAnnounceCountdown(seconds)) {
+            playCountdownSounds(arena);
         }
 
         arena.setCountdown(seconds - 1);
@@ -567,6 +600,10 @@ public class GameManager {
             plugin.getMessageManager().send(player, "game.arena-full");
             return;
         }
+        if (arena.hasStartedMatch()) {
+            plugin.getMessageManager().send(player, "game.arena-running");
+            return;
+        }
 
         if (!plugin.getWorldCloneManager().ensureClone(arena)) {
             player.sendMessage(plugin.getMessageManager().get("prefix") + ChatUtil.color("&cNao foi possivel preparar o clone do mapa desta arena."));
@@ -575,6 +612,7 @@ public class GameManager {
 
         snapshots.put(player.getUniqueId(), PlayerSnapshot.capture(player));
         preparePlayer(player);
+        player.getEnderChest().clear();
 
         arena.addPlayer(player.getUniqueId());
         plugin.getArenaManager().setPlayerArena(player.getUniqueId(), arena);
@@ -593,7 +631,7 @@ public class GameManager {
 
         if (arena.getState() == ArenaState.WAITING && arena.getPlayerCount() >= getRequiredPlayersToStart(arena)) {
             arena.setState(ArenaState.STARTING);
-            arena.setCountdown(getStartingCountdown());
+            arena.setCountdown(getStartingCountdown(arena));
         }
     }
 
@@ -602,6 +640,9 @@ public class GameManager {
 
         for (Arena arena : plugin.getArenaManager().getRuntimeArenas()) {
             if (mode != null && arena.getMode() != mode) {
+                continue;
+            }
+            if (arena.hasStartedMatch()) {
                 continue;
             }
             if (arena.getState() != ArenaState.WAITING && arena.getState() != ArenaState.STARTING) {
@@ -629,6 +670,7 @@ public class GameManager {
 
     private void startGame(Arena arena) {
         arena.setState(ArenaState.INGAME);
+        arena.markMatchStarted();
         arena.setElapsedTime(0);
         arena.clearSnapshots();
         assignRandomTeams(arena);
@@ -636,6 +678,8 @@ public class GameManager {
         for (ArenaTeam team : arena.getTeams().values()) {
             team.resetRuntime();
         }
+        destroyUnusedTeamBeds(arena);
+        plugin.getTeamManager().updateEliminationState(arena);
 
         CuboidRegion waitingRegion = arena.getMatchRegion(arena.getWaitingRegion());
         if (waitingRegion != null) {
@@ -650,6 +694,7 @@ public class GameManager {
         plugin.getSetupManager().clearArenaSetupVisuals(arena);
         plugin.getNpcManager().refreshArenaShopNpcs(arena);
         plugin.getHologramManager().refreshArenaChestHolograms(arena);
+        broadcast(arena, "game.game-started", Collections.<String, String>emptyMap());
 
         for (UUID uniqueId : new ArrayList<UUID>(arena.getPlayers())) {
             Player player = Bukkit.getPlayer(uniqueId);
@@ -668,8 +713,6 @@ public class GameManager {
             }
             SoundUtil.playConfigured(plugin, player, "sound-effects.game-start", "ENDERDRAGON_GROWL", 0.7F, 1.2F);
         }
-
-        broadcast(arena, "game.game-started", Collections.<String, String>emptyMap());
     }
 
     private void checkWin(Arena arena) {
@@ -732,14 +775,7 @@ public class GameManager {
 
     private void makeSpectator(Player player, Arena arena) {
         arena.getSpectators().add(player.getUniqueId());
-        try {
-            player.setGameMode(GameMode.SPECTATOR);
-        } catch (IllegalArgumentException exception) {
-            player.setGameMode(GameMode.CREATIVE);
-            player.setAllowFlight(plugin.getConfig().getBoolean("settings.spectators-can-fly", true));
-            player.setFlying(plugin.getConfig().getBoolean("settings.spectators-can-fly", true));
-        }
-        player.setCanPickupItems(false);
+        applySpectatorState(player);
         plugin.getMessageManager().send(player, "game.spectator");
     }
 
@@ -751,15 +787,17 @@ public class GameManager {
         player.setSaturation(10.0F);
         player.setExp(0.0F);
         player.setLevel(5);
-        player.setCanPickupItems(false);
+        applySpectatorState(player);
+    }
 
-        try {
-            player.setGameMode(GameMode.SPECTATOR);
-        } catch (IllegalArgumentException exception) {
-            player.setGameMode(GameMode.CREATIVE);
-            player.setAllowFlight(true);
-            player.setFlying(true);
-        }
+    private void applySpectatorState(Player player) {
+        boolean canFly = plugin.getConfig().getBoolean("settings.spectators-can-fly", true);
+        player.setGameMode(GameMode.ADVENTURE);
+        player.setAllowFlight(canFly);
+        player.setFlying(canFly);
+        player.setCanPickupItems(false);
+        player.setFallDistance(0.0F);
+        player.updateInventory();
     }
 
     private void startRespawnCountdown(final Player player, final Arena arena, final Location respawnLocation) {
@@ -834,10 +872,6 @@ public class GameManager {
                 player.playSound(player.getLocation(), Sound.NOTE_PLING, 1.0F, 1.2F);
             }
         }
-    }
-
-    private int getRequiredPlayersToStart(Arena arena) {
-        return getArenaCapacity(arena);
     }
 
     private boolean isPreGameArena(Arena arena) {
@@ -974,9 +1008,127 @@ public class GameManager {
         }
     }
 
-    private int getStartingCountdown() {
-        int configured = plugin.getConfig().getInt("settings.countdown-seconds", 10);
-        return Math.max(3, Math.min(configured, 10));
+    public boolean speedUpStart(Arena arena) {
+        if (arena == null) {
+            return false;
+        }
+        if (arena.getState() != ArenaState.WAITING && arena.getState() != ArenaState.STARTING) {
+            return false;
+        }
+        if (arena.getPlayerCount() < getRequiredPlayersToStart(arena)) {
+            return false;
+        }
+
+        int forceCountdown = Math.max(1, plugin.getConfig().getInt("settings.force-start-countdown", 5));
+        int currentCountdown = arena.getCountdown();
+        arena.setState(ArenaState.STARTING);
+        if (currentCountdown <= 0) {
+            arena.setCountdown(forceCountdown);
+        } else {
+            arena.setCountdown(Math.min(currentCountdown, forceCountdown));
+        }
+        return true;
+    }
+
+    private int getStartingCountdown(Arena arena) {
+        int configured = Math.max(1, plugin.getConfig().getInt("settings.countdown-seconds", 10));
+        if (!plugin.getConfig().getBoolean("settings.dynamic-start-countdown", true) || arena == null) {
+            return configured;
+        }
+
+        int players = arena.getPlayerCount();
+        int required = getRequiredPlayersToStart(arena);
+        int capacity = Math.max(required, getArenaCapacity(arena));
+
+        if (players >= capacity || players >= Math.max(required + 3, (int) Math.ceil(capacity * 0.75D))) {
+            return 10;
+        }
+        if (players >= Math.max(required + 2, (int) Math.ceil(capacity * 0.60D))) {
+            return 20;
+        }
+        if (players >= Math.max(required + 1, (int) Math.ceil(capacity * 0.45D))) {
+            return 30;
+        }
+        return 40;
+    }
+
+    private boolean shouldAnnounceCountdown(int seconds) {
+        return seconds == 40 || seconds == 30 || seconds == 20 || seconds == 10 || seconds <= 5;
+    }
+
+    private void destroyUnusedTeamBeds(Arena arena) {
+        if (arena == null) {
+            return;
+        }
+
+        for (TeamColor color : plugin.getTeamManager().getActiveColors(arena)) {
+            ArenaTeam team = arena.getTeam(color);
+            if (team == null || team.isBedDestroyed()) {
+                continue;
+            }
+            if (!plugin.getTeamManager().getPlayersInTeam(arena, color).isEmpty()) {
+                continue;
+            }
+
+            team.setBedDestroyed(true);
+            team.setEliminated(true);
+            removeTeamBedBlocks(arena, team);
+        }
+    }
+
+    private void destroyTeamBedOnLeave(Arena arena, ArenaTeam team, String playerName) {
+        if (arena == null || team == null || team.isBedDestroyed()) {
+            return;
+        }
+
+        team.setBedDestroyed(true);
+        removeTeamBedBlocks(arena, team);
+
+        for (UUID uniqueId : arena.getPlayers()) {
+            Player member = Bukkit.getPlayer(uniqueId);
+            if (member == null || !member.isOnline()) {
+                continue;
+            }
+
+            TeamColor color = plugin.getTeamManager().getColor(arena, uniqueId);
+            if (color == team.getColor()) {
+                plugin.getMessageManager().send(member, "game.your-bed-destroyed");
+                SoundUtil.playConfigured(plugin, member, "sound-effects.own-bed-destroyed", "WITHER_DEATH", 1.0F, 1.0F);
+                sendConfiguredTitle(member, "titles.game.bed-destroyed", placeholders(
+                    "team", team.getColor().getColoredName(),
+                    "player", playerName
+                ), 5, 60, 10);
+            } else {
+                SoundUtil.playConfigured(plugin, member, "sound-effects.bed-destroyed", "ENDERDRAGON_GROWL", 0.8F, 1.1F);
+            }
+        }
+    }
+
+    private void removeTeamBedBlocks(Arena arena, ArenaTeam team) {
+        if (arena == null || team == null || team.getBedData() == null) {
+            return;
+        }
+
+        removeBedBlock(arena, team.getBedData().getHead());
+        removeBedBlock(arena, team.getBedData().getFoot());
+    }
+
+    private void removeBedBlock(Arena arena, Location sourceLocation) {
+        if (arena == null || sourceLocation == null) {
+            return;
+        }
+
+        Location matchLocation = arena.getMatchLocation(sourceLocation);
+        if (matchLocation == null) {
+            return;
+        }
+
+        Block block = matchLocation.getBlock();
+        BlockState state = block.getState();
+        arena.registerSnapshot(state);
+        if (block.getType() != Material.AIR) {
+            block.setType(Material.AIR);
+        }
     }
 
     private Location resolveLobbySpawn(Arena arena) {

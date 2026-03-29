@@ -9,6 +9,7 @@ public class PlayerSnapshot {
 
     private final ItemStack[] contents;
     private final ItemStack[] armor;
+    private final ItemStack[] enderChestContents;
     private final double health;
     private final int food;
     private final float experience;
@@ -18,10 +19,11 @@ public class PlayerSnapshot {
     private final boolean allowFlight;
     private final boolean flying;
 
-    private PlayerSnapshot(ItemStack[] contents, ItemStack[] armor, double health, int food, float experience, int level,
+    private PlayerSnapshot(ItemStack[] contents, ItemStack[] armor, ItemStack[] enderChestContents, double health, int food, float experience, int level,
                            Location location, GameMode gameMode, boolean allowFlight, boolean flying) {
         this.contents = contents;
         this.armor = armor;
+        this.enderChestContents = enderChestContents;
         this.health = health;
         this.food = food;
         this.experience = experience;
@@ -36,6 +38,7 @@ public class PlayerSnapshot {
         return new PlayerSnapshot(
             player.getInventory().getContents().clone(),
             player.getInventory().getArmorContents().clone(),
+            player.getEnderChest().getContents().clone(),
             player.getHealth(),
             player.getFoodLevel(),
             player.getExp(),
@@ -54,6 +57,7 @@ public class PlayerSnapshot {
     public void restore(Player player, Location targetLocation) {
         player.getInventory().setContents(contents);
         player.getInventory().setArmorContents(armor);
+        player.getEnderChest().setContents(enderChestContents);
         player.setHealth(Math.min(player.getMaxHealth(), health));
         player.setFoodLevel(food);
         player.setExp(experience);

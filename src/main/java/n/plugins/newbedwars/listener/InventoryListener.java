@@ -60,7 +60,9 @@ public class InventoryListener implements Listener {
             return;
         }
 
-        if (plugin.getSetupManager().isInSetup(player) || plugin.getGameManager().isRespawning(player.getUniqueId())) {
+        if (plugin.getSetupManager().isInSetup(player)
+            || plugin.getGameManager().isRespawning(player.getUniqueId())
+            || isArenaSpectator(player)) {
             event.setCancelled(true);
         }
     }
@@ -98,7 +100,9 @@ public class InventoryListener implements Listener {
             return;
         }
 
-        if (plugin.getSetupManager().isInSetup(player) || plugin.getGameManager().isRespawning(player.getUniqueId())) {
+        if (plugin.getSetupManager().isInSetup(player)
+            || plugin.getGameManager().isRespawning(player.getUniqueId())
+            || isArenaSpectator(player)) {
             event.setCancelled(true);
         }
     }
@@ -133,7 +137,8 @@ public class InventoryListener implements Listener {
         Player player = event.getPlayer();
         if (plugin.getMenuManager().isViewingMenu(player)
             || plugin.getSetupManager().isInSetup(player)
-            || plugin.getGameManager().isRespawning(player.getUniqueId())) {
+            || plugin.getGameManager().isRespawning(player.getUniqueId())
+            || isArenaSpectator(player)) {
             event.setCancelled(true);
             return;
         }
@@ -368,5 +373,14 @@ public class InventoryListener implements Listener {
 
         Arena arena = plugin.getArenaManager().getArenaByPlayer(player.getUniqueId());
         return plugin.getSetupManager().isInSetup(player) || arena != null;
+    }
+
+    private boolean isArenaSpectator(Player player) {
+        if (player == null) {
+            return false;
+        }
+
+        Arena arena = plugin.getArenaManager().getArenaByPlayer(player.getUniqueId());
+        return arena != null && arena.getSpectators().contains(player.getUniqueId());
     }
 }
