@@ -520,7 +520,6 @@ public class GameManager {
 
         if (seconds == 10 || seconds <= 5) {
             playCountdownSounds(arena);
-            sendArenaCountdownTitles(arena, seconds);
         }
 
         if (seconds <= 0) {
@@ -1039,22 +1038,6 @@ public class GameManager {
             arena.getMatchWorld().setThundering(false);
             arena.getMatchWorld().setWeatherDuration(Integer.MAX_VALUE);
             arena.getMatchWorld().setThunderDuration(Integer.MAX_VALUE);
-        }
-    }
-
-    private void sendArenaCountdownTitles(Arena arena, int seconds) {
-        if (arena == null) {
-            return;
-        }
-
-        Map<String, String> placeholders = Collections.singletonMap("seconds", String.valueOf(seconds));
-        for (UUID uniqueId : arena.getPlayers()) {
-            Player player = Bukkit.getPlayer(uniqueId);
-            if (player == null || !player.isOnline()) {
-                continue;
-            }
-
-            sendConfiguredTitle(player, "titles.game.countdown", placeholders, 0, 25, 5);
         }
     }
 
