@@ -7,8 +7,10 @@ import n.plugins.newbedwars.arena.ArenaState;
 import n.plugins.newbedwars.arena.ArenaTeam;
 import n.plugins.newbedwars.arena.TeamColor;
 import n.plugins.newbedwars.util.LocationUtil;
+import n.plugins.newbedwars.util.SoundUtil;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
+import org.bukkit.block.BlockFace;
 import org.bukkit.block.Chest;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.TNTPrimed;
@@ -110,15 +112,35 @@ public class GameBlockListener implements Listener {
 
         Player player = event.getPlayer();
         Arena arena = plugin.getArenaManager().getArenaByPlayer(player.getUniqueId());
-        if (arena == null
-            || arena.getState() != ArenaState.INGAME
-            || arena.getSpectators().contains(player.getUniqueId())
-            || plugin.getGameManager().isRespawning(player.getUniqueId())) {
+        if (arena == null) {
             return;
         }
 
         Block block = event.getClickedBlock();
         if (block == null) {
+            return;
+        }
+
+        if (event.getAction() == Action.RIGHT_CLICK_BLOCK && block.getType() == Material.BED_BLOCK) {
+            event.setCancelled(true);
+            try {
+                event.setUseInteractedBlock(org.bukkit.event.Event.Result.DENY);
+                event.setUseItemInHand(org.bukkit.event.Event.Result.DENY);
+            } catch (Throwable ignored) {
+            }
+            if (arena.getState() != ArenaState.INGAME) {
+                return;
+            }
+        }
+
+        if (arena.getState() != ArenaState.INGAME
+            || arena.getSpectators().contains(player.getUniqueId())
+            || plugin.getGameManager().isRespawning(player.getUniqueId())) {
+            return;
+        }
+
+        if (event.getAction() == Action.RIGHT_CLICK_BLOCK && block.getType() == Material.BED_BLOCK) {
+            tryPlaceBlockOnBed(player, arena, block);
             return;
         }
 
@@ -143,6 +165,7 @@ public class GameBlockListener implements Listener {
             if (event.getAction() == Action.LEFT_CLICK_BLOCK) {
                 storeHandItemInInventory(player, player.getEnderChest());
             } else {
+                SoundUtil.playConfigured(plugin, player, "sound-effects.ender-chest-open", "ENDERCHEST_OPEN", 1.0F, 1.0F);
                 player.openInventory(player.getEnderChest());
             }
             return;
@@ -253,6 +276,11 @@ public class GameBlockListener implements Listener {
             }
 
             if (!sourceArena.isPlacedBlock(block.getLocation())) {
+                iterator.remove();
+                continue;
+            }
+
+            if (isExplosionProofPlacedBlock(sourceArena, block)) {
                 iterator.remove();
                 continue;
             }
@@ -414,6 +442,7 @@ public class GameBlockListener implements Listener {
             return;
         }
 
+        SoundUtil.playConfigured(plugin, player, "sound-effects.team-chest-open", "CHEST_OPEN", 1.0F, 1.0F);
         player.openInventory(((Chest) block.getState()).getInventory());
     }
 
@@ -446,7 +475,53 @@ public class GameBlockListener implements Listener {
             player.setItemInHand(leftover);
         }
 
+        SoundUtil.playConfigured(plugin, player,
+            inventory == player.getEnderChest() ? "sound-effects.ender-chest-store" : "sound-effects.team-chest-store",
+            "CHEST_OPEN", 1.0F, 1.2F);
         player.updateInventory();
+    }
+
+    private boolean tryPlaceBlockOnBed(Player player, Arena arena, Block bedBlock) {
+        if (player == null || arena == null || bedBlock == null || !player.isSneaking()) {
+            return false;
+        }
+
+        ItemStack hand = player.getItemInHand();
+        if (!isPlaceableBedDefenseBlock(hand)) {
+            return false;
+        }
+
+        Block target = bedBlock.getRelative(BlockFace.UP);
+        if (target.getType() != Material.AIR || isPlayerOccupyingBlock(target)) {
+            return false;
+        }
+
+        arena.registerSnapshot(target.getState());
+        setBlockFromItem(target, hand);
+        arena.addPlacedBlock(target.getLocation());
+        removeOneFromHand(player);
+        return true;
+    }
+
+    private boolean isPlayerOccupyingBlock(Block target) {
+        if (target == null || target.getWorld() == null) {
+            return false;
+        }
+
+        for (Player worldPlayer : target.getWorld().getPlayers()) {
+            if (worldPlayer == null || worldPlayer.isDead()) {
+                continue;
+            }
+
+            Block feetBlock = worldPlayer.getLocation().getBlock();
+            Block headBlock = worldPlayer.getLocation().clone().add(0.0D, 1.0D, 0.0D).getBlock();
+            if (LocationUtil.sameBlock(feetBlock.getLocation(), target.getLocation())
+                || LocationUtil.sameBlock(headBlock.getLocation(), target.getLocation())) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private boolean isSword(Material material) {
@@ -455,5 +530,109 @@ public class GameBlockListener implements Listener {
             || material == Material.IRON_SWORD
             || material == Material.DIAMOND_SWORD
             || material == Material.GOLD_SWORD;
+    }
+
+    @SuppressWarnings("deprecation")
+    private void setBlockFromItem(Block block, ItemStack item) {
+        if (block == null || item == null) {
+            return;
+        }
+
+        try {
+            block.setTypeIdAndData(item.getTypeId(), item.getData().getData(), true);
+        } catch (Throwable ignored) {
+            block.setType(item.getType());
+            try {
+                block.setData(item.getData().getData());
+            } catch (Throwable ignoredAgain) {
+            }
+        }
+    }
+
+    @SuppressWarnings("deprecation")
+    private boolean isBlastProofItem(ItemStack item) {
+        if (item == null || item.getType() == Material.AIR) {
+            return false;
+        }
+
+        short durability = item.getDurability();
+        for (String raw : plugin.getConfig().getStringList("special-blocks.blast-proof.materials")) {
+            if (raw == null || raw.trim().isEmpty()) {
+                continue;
+            }
+
+            String[] parts = raw.trim().toUpperCase(Locale.ENGLISH).split(":", 2);
+            Material material;
+            try {
+                material = Material.valueOf(parts[0]);
+            } catch (IllegalArgumentException exception) {
+                continue;
+            }
+
+            if (item.getType() != material) {
+                continue;
+            }
+
+            if (parts.length == 1) {
+                return true;
+            }
+
+            try {
+                if (durability == Short.parseShort(parts[1])) {
+                    return true;
+                }
+            } catch (NumberFormatException ignored) {
+            }
+        }
+        return false;
+    }
+
+    private boolean isPlaceableBedDefenseBlock(ItemStack item) {
+        return item != null
+            && item.getType() != Material.AIR
+            && item.getType().isBlock()
+            && item.getType() != Material.BED_BLOCK;
+    }
+
+    @SuppressWarnings("deprecation")
+    private boolean isExplosionProofPlacedBlock(Arena arena, Block block) {
+        if (arena == null || block == null || !arena.isPlacedBlock(block.getLocation())) {
+            return false;
+        }
+
+        if (!plugin.getConfig().getBoolean("special-blocks.blast-proof.enabled", true)) {
+            return false;
+        }
+
+        for (String raw : plugin.getConfig().getStringList("special-blocks.blast-proof.materials")) {
+            if (raw == null || raw.trim().isEmpty()) {
+                continue;
+            }
+
+            String[] parts = raw.trim().toUpperCase(Locale.ENGLISH).split(":", 2);
+            Material material;
+            try {
+                material = Material.valueOf(parts[0]);
+            } catch (IllegalArgumentException exception) {
+                continue;
+            }
+
+            if (block.getType() != material) {
+                continue;
+            }
+
+            if (parts.length == 1) {
+                return true;
+            }
+
+            try {
+                byte data = (byte) Integer.parseInt(parts[1]);
+                if (block.getData() == data) {
+                    return true;
+                }
+            } catch (NumberFormatException ignored) {
+            }
+        }
+        return false;
     }
 }

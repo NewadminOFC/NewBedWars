@@ -1,8 +1,9 @@
 package n.plugins.newbedwars.setup;
 
 public enum SetupPointAction {
-    ARENA_WAITING_SPAWN("Spawn de espera", false),
-    TEAM_SPAWN("Spawn do time", false),
+    ARENA_WAITING_SPAWN("Spawn de espera", true),
+    ARENA_ANTI_VOID("Anti-void", false),
+    TEAM_SPAWN("Spawn do time", true),
     TEAM_BED("Cama", true),
     TEAM_CHEST("Bau do time", true),
     TEAM_ENDER_CHEST("Ender chest", true),

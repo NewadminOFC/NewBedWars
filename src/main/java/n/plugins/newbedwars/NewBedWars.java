@@ -2,6 +2,7 @@ package n.plugins.newbedwars;
 
 import n.plugins.newbedwars.command.BedWarsCommand;
 import n.plugins.newbedwars.command.LobbyCommand;
+import n.plugins.newbedwars.listener.CombatListener;
 import n.plugins.newbedwars.listener.GameBlockListener;
 import n.plugins.newbedwars.listener.GameItemListener;
 import n.plugins.newbedwars.listener.GamePlayerListener;
@@ -123,6 +124,7 @@ public final class NewBedWars extends JavaPlugin {
     private void registerListeners() {
         Bukkit.getPluginManager().registerEvents(new InventoryListener(this), this);
         Bukkit.getPluginManager().registerEvents(new SetupInteractListener(this), this);
+        Bukkit.getPluginManager().registerEvents(new CombatListener(this), this);
         Bukkit.getPluginManager().registerEvents(new GameBlockListener(this), this);
         Bukkit.getPluginManager().registerEvents(new GameItemListener(this), this);
         Bukkit.getPluginManager().registerEvents(new GamePlayerListener(this), this);

@@ -13,6 +13,7 @@ import org.bukkit.event.inventory.InventoryDragEvent;
 import org.bukkit.event.inventory.InventoryOpenEvent;
 import org.bukkit.event.inventory.InventoryType;
 import org.bukkit.event.inventory.ClickType;
+import org.bukkit.event.player.PlayerItemDamageEvent;
 import org.bukkit.event.player.PlayerDropItemEvent;
 import org.bukkit.event.player.PlayerPickupItemEvent;
 import org.bukkit.inventory.ItemStack;
@@ -177,6 +178,26 @@ public class InventoryListener implements Listener {
         event.setCancelled(false);
     }
 
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
+    public void onItemDamage(PlayerItemDamageEvent event) {
+        Player player = event.getPlayer();
+        if (player == null) {
+            return;
+        }
+
+        Arena arena = plugin.getArenaManager().getArenaByPlayer(player.getUniqueId());
+        if (arena == null || arena.getSpectators().contains(player.getUniqueId()) || plugin.getGameManager().isRespawning(player.getUniqueId())) {
+            return;
+        }
+
+        ItemStack item = event.getItem();
+        if (item == null || (!isPickaxe(item.getType()) && !isAxe(item.getType()))) {
+            return;
+        }
+
+        event.setCancelled(true);
+    }
+
     private boolean isArmor(Material material) {
         return material == Material.LEATHER_HELMET
             || material == Material.LEATHER_CHESTPLATE
@@ -206,6 +227,22 @@ public class InventoryListener implements Listener {
             || material == Material.IRON_SWORD
             || material == Material.DIAMOND_SWORD
             || material == Material.GOLD_SWORD;
+    }
+
+    private boolean isPickaxe(Material material) {
+        return material == Material.WOOD_PICKAXE
+            || material == Material.STONE_PICKAXE
+            || material == Material.GOLD_PICKAXE
+            || material == Material.IRON_PICKAXE
+            || material == Material.DIAMOND_PICKAXE;
+    }
+
+    private boolean isAxe(Material material) {
+        return material == Material.WOOD_AXE
+            || material == Material.STONE_AXE
+            || material == Material.GOLD_AXE
+            || material == Material.IRON_AXE
+            || material == Material.DIAMOND_AXE;
     }
 
     private boolean shouldLockArmor(InventoryClickEvent event, Player player) {

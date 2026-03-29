@@ -32,11 +32,14 @@ public class Arena {
     private final Set<UUID> spectators;
     private final Map<UUID, TeamColor> playerTeams;
     private final Map<UUID, Integer> playerArmorTiers;
+    private final Map<UUID, Integer> playerPickaxeTiers;
+    private final Map<UUID, Integer> playerAxeTiers;
     private final Map<BlockPosition, BlockSnapshot> blockSnapshots;
     private final Set<BlockPosition> placedBlocks;
     private String activeWorldName;
     private Location waitingSpawn;
     private CuboidRegion waitingRegion;
+    private Double antiVoidY;
     private ArenaState state;
     private boolean ready;
     private int countdown;
@@ -63,6 +66,8 @@ public class Arena {
         this.spectators = new HashSet<UUID>();
         this.playerTeams = new HashMap<UUID, TeamColor>();
         this.playerArmorTiers = new HashMap<UUID, Integer>();
+        this.playerPickaxeTiers = new HashMap<UUID, Integer>();
+        this.playerAxeTiers = new HashMap<UUID, Integer>();
         this.blockSnapshots = new LinkedHashMap<BlockPosition, BlockSnapshot>();
         this.placedBlocks = new HashSet<BlockPosition>();
         this.state = ArenaState.WAITING;
@@ -143,6 +148,18 @@ public class Arena {
     public void setWaitingRegion(CuboidRegion waitingRegion) {
         this.waitingRegion = waitingRegion;
         this.ready = false;
+    }
+
+    public Double getAntiVoidY() {
+        return antiVoidY;
+    }
+
+    public void setAntiVoidY(Double antiVoidY) {
+        this.antiVoidY = antiVoidY;
+    }
+
+    public boolean hasAntiVoidY() {
+        return antiVoidY != null;
     }
 
     public Map<TeamColor, ArenaTeam> getTeams() {
@@ -250,6 +267,8 @@ public class Arena {
         this.spectators.remove(uniqueId);
         this.playerTeams.remove(uniqueId);
         this.playerArmorTiers.remove(uniqueId);
+        this.playerPickaxeTiers.remove(uniqueId);
+        this.playerAxeTiers.remove(uniqueId);
     }
 
     public int getArmorTier(UUID uniqueId) {
@@ -269,6 +288,40 @@ public class Arena {
         playerArmorTiers.clear();
     }
 
+    public int getPickaxeTier(UUID uniqueId) {
+        Integer tier = playerPickaxeTiers.get(uniqueId);
+        return tier == null ? 0 : tier.intValue();
+    }
+
+    public void setPickaxeTier(UUID uniqueId, int tier) {
+        if (uniqueId == null) {
+            return;
+        }
+
+        playerPickaxeTiers.put(uniqueId, Integer.valueOf(Math.max(0, tier)));
+    }
+
+    public void clearPickaxeTiers() {
+        playerPickaxeTiers.clear();
+    }
+
+    public int getAxeTier(UUID uniqueId) {
+        Integer tier = playerAxeTiers.get(uniqueId);
+        return tier == null ? 0 : tier.intValue();
+    }
+
+    public void setAxeTier(UUID uniqueId, int tier) {
+        if (uniqueId == null) {
+            return;
+        }
+
+        playerAxeTiers.put(uniqueId, Integer.valueOf(Math.max(0, tier)));
+    }
+
+    public void clearAxeTiers() {
+        playerAxeTiers.clear();
+    }
+
     public Player getAnyAlivePlayer() {
         for (UUID uniqueId : players) {
             if (spectators.contains(uniqueId)) {
@@ -284,12 +337,13 @@ public class Arena {
     }
 
     public Location getSpectatorSpawn() {
+        if (getWaitingSpawn() != null) {
+            return getMatchLocation(getWaitingSpawn());
+        }
+
         Player alive = getAnyAlivePlayer();
         if (alive != null) {
             return alive.getLocation();
-        }
-        if (getWaitingSpawn() != null) {
-            return getMatchLocation(getWaitingSpawn());
         }
 
         World world = getMatchWorld();
@@ -346,6 +400,8 @@ public class Arena {
         this.spectators.clear();
         this.playerTeams.clear();
         this.playerArmorTiers.clear();
+        this.playerPickaxeTiers.clear();
+        this.playerAxeTiers.clear();
         this.restoreSnapshots();
         this.clearPlacedBlocks();
         this.clearActiveWorld();
@@ -358,6 +414,7 @@ public class Arena {
         Arena copy = new Arena(runtimeName, worldName, templateName, true);
         copy.waitingSpawn = getWaitingSpawn();
         copy.waitingRegion = waitingRegion == null ? null : new CuboidRegion(waitingRegion.getPos1(), waitingRegion.getPos2());
+        copy.antiVoidY = antiVoidY;
         copy.ready = ready;
 
         for (TeamColor color : TeamColor.values()) {

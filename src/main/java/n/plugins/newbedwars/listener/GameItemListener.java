@@ -1,17 +1,30 @@
 package n.plugins.newbedwars.listener;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.UUID;
 import n.plugins.newbedwars.NewBedWars;
 import n.plugins.newbedwars.arena.Arena;
 import n.plugins.newbedwars.arena.ArenaState;
+import n.plugins.newbedwars.arena.TeamColor;
+import n.plugins.newbedwars.util.ChatUtil;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.Sound;
+import org.bukkit.configuration.ConfigurationSection;
+import org.bukkit.entity.Creature;
 import org.bukkit.entity.Entity;
+import org.bukkit.entity.Egg;
 import org.bukkit.entity.Fireball;
+import org.bukkit.entity.IronGolem;
 import org.bukkit.entity.Player;
+import org.bukkit.entity.Projectile;
+import org.bukkit.entity.Silverfish;
+import org.bukkit.entity.Snowball;
 import org.bukkit.entity.TNTPrimed;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
@@ -20,9 +33,14 @@ import org.bukkit.event.block.Action;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.EntityExplodeEvent;
+import org.bukkit.event.entity.ProjectileHitEvent;
+import org.bukkit.event.player.PlayerEggThrowEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
+import org.bukkit.event.player.PlayerItemConsumeEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.metadata.FixedMetadataValue;
+import org.bukkit.potion.PotionEffect;
+import org.bukkit.potion.PotionEffectType;
 import org.bukkit.util.Vector;
 
 public class GameItemListener implements Listener {
@@ -31,9 +49,14 @@ public class GameItemListener implements Listener {
     public static final String META_SPECIAL_TNT = "newbedwars_special_tnt";
     public static final String META_SPECIAL_OWNER = "newbedwars_special_owner";
     public static final String META_TNT_UNLOCKED = "newbedwars_tnt_unlocked";
+    public static final String META_BRIDGE_EGG = "newbedwars_bridge_egg";
+    public static final String META_BUG_BOMB = "newbedwars_bug_bomb";
+    public static final String META_SUPPORT_TEAM = "newbedwars_support_team";
+    public static final String META_SUPPORT_DURATION = "newbedwars_support_duration";
 
     private final NewBedWars plugin;
     private final List<RecentBlast> recentBlasts = new ArrayList<RecentBlast>();
+    private final Map<UUID, FallDamageProtection> fallDamageProtections = new HashMap<UUID, FallDamageProtection>();
 
     public GameItemListener(NewBedWars plugin) {
         this.plugin = plugin;
@@ -53,8 +76,7 @@ public class GameItemListener implements Listener {
         }
 
         ItemStack hand = player.getItemInHand();
-        if ((arena.getState() == ArenaState.WAITING || arena.getState() == ArenaState.STARTING)
-            && plugin.getGameManager().handleWaitingLobbyItemUse(player, hand)) {
+        if (plugin.getGameManager().handleWaitingLobbyItemUse(player, hand)) {
             event.setCancelled(true);
             return;
         }
@@ -67,18 +89,97 @@ public class GameItemListener implements Listener {
             return;
         }
 
-        if (hand == null || hand.getType() != Material.FIREBALL) {
+        if (hand == null || hand.getType() == Material.AIR) {
             return;
         }
 
-        event.setCancelled(true);
-        try {
-            event.setUseInteractedBlock(org.bukkit.event.Event.Result.DENY);
-            event.setUseItemInHand(org.bukkit.event.Event.Result.DENY);
-        } catch (Throwable ignored) {
+        ConfigurationSection specialReward = findRewardSection(hand, "special-use", null);
+        String specialUse = specialReward == null ? null : specialReward.getString("special-use", "").trim().toLowerCase(Locale.ENGLISH);
+        if ("bridge-egg".equals(specialUse)) {
+            cancelUse(event);
+            removeOneFromHand(player);
+            launchBridgeEgg(player, arena);
+            return;
         }
+
+        if ("bug-bomb".equals(specialUse)) {
+            cancelUse(event);
+            removeOneFromHand(player);
+            launchBugBomb(player, arena, specialReward);
+            return;
+        }
+
+        if ("iron-golem".equals(specialUse)) {
+            cancelUse(event);
+            spawnIronGolem(player, arena, event, specialReward);
+            return;
+        }
+
+        if (hand.getType() != Material.FIREBALL) {
+            return;
+        }
+
+        cancelUse(event);
         removeOneFromHand(player);
         launchFireball(player);
+    }
+
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
+    public void onConsume(PlayerItemConsumeEvent event) {
+        Player player = event.getPlayer();
+        Arena arena = plugin.getArenaManager().getArenaByPlayer(player.getUniqueId());
+        if (arena == null || arena.getState() != ArenaState.INGAME) {
+            return;
+        }
+
+        if (arena.getSpectators().contains(player.getUniqueId()) || plugin.getGameManager().isRespawning(player.getUniqueId())) {
+            event.setCancelled(true);
+            return;
+        }
+
+        final ConfigurationSection reward = findRewardSection(event.getItem(), "special-use", "custom-potion");
+        if (reward == null) {
+            return;
+        }
+
+        final PotionEffectType effectType = PotionEffectType.getByName(reward.getString("effect-type", "").toUpperCase(Locale.ENGLISH));
+        if (effectType == null) {
+            return;
+        }
+
+        final int durationTicks = Math.max(20, reward.getInt("duration-seconds", 45) * 20);
+        final int amplifier = Math.max(0, reward.getInt("amplifier", 0));
+        plugin.getServer().getScheduler().runTask(plugin, new Runnable() {
+            @Override
+            public void run() {
+                if (!player.isOnline()) {
+                    return;
+                }
+
+                player.removePotionEffect(effectType);
+                player.addPotionEffect(new PotionEffect(effectType, durationTicks, amplifier, false, false), true);
+            }
+        });
+    }
+
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
+    public void onProjectileHit(ProjectileHitEvent event) {
+        Projectile projectile = event.getEntity();
+        if (projectile == null) {
+            return;
+        }
+
+        if (projectile.hasMetadata(META_BUG_BOMB)) {
+            spawnBugBombMob(projectile);
+        }
+    }
+
+    @EventHandler(priority = EventPriority.HIGHEST)
+    public void onEggThrow(PlayerEggThrowEvent event) {
+        Egg egg = event.getEgg();
+        if (egg != null && egg.hasMetadata(META_BRIDGE_EGG)) {
+            event.setHatching(false);
+        }
     }
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
@@ -96,6 +197,13 @@ public class GameItemListener implements Listener {
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void onEntityDamageByEntity(EntityDamageByEntityEvent event) {
+        if (isSupportMob(event.getDamager()) && event.getEntity() instanceof Player) {
+            if (!canSupportMobHit(event.getDamager(), (Player) event.getEntity())) {
+                event.setCancelled(true);
+            }
+            return;
+        }
+
         if (isSpecialExplosive(event.getDamager())) {
             event.setCancelled(true);
         }
@@ -113,6 +221,377 @@ public class GameItemListener implements Listener {
         }
 
         event.setCancelled(true);
+    }
+
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
+    public void onFallDamage(EntityDamageEvent event) {
+        if (event.getCause() != EntityDamageEvent.DamageCause.FALL || !(event.getEntity() instanceof Player)) {
+            return;
+        }
+
+        Player player = (Player) event.getEntity();
+        FallDamageProtection protection = consumeFallDamageProtection(player.getUniqueId());
+        if (protection == null || !isFallDamageCapEnabled(protection.configPath)) {
+            return;
+        }
+
+        double minimumHealth = Math.max(1.0D, Math.min(player.getMaxHealth(), protection.minimumHearts * 2.0D));
+        double maxAllowedFinalDamage = player.getHealth() - minimumHealth;
+        if (maxAllowedFinalDamage <= 0.0D) {
+            event.setDamage(0.0D);
+            return;
+        }
+
+        double finalDamage = event.getFinalDamage();
+        if (finalDamage <= maxAllowedFinalDamage) {
+            return;
+        }
+
+        if (finalDamage <= 0.0D) {
+            event.setDamage(0.0D);
+            return;
+        }
+
+        double scaledDamage = event.getDamage() * (maxAllowedFinalDamage / finalDamage);
+        event.setDamage(Math.max(0.0D, scaledDamage));
+    }
+
+    private void cancelUse(PlayerInteractEvent event) {
+        if (event == null) {
+            return;
+        }
+
+        event.setCancelled(true);
+        try {
+            event.setUseInteractedBlock(org.bukkit.event.Event.Result.DENY);
+            event.setUseItemInHand(org.bukkit.event.Event.Result.DENY);
+        } catch (Throwable ignored) {
+        }
+    }
+
+    private ConfigurationSection findRewardSection(ItemStack item, String field, String expectedValue) {
+        if (item == null || item.getType() == Material.AIR || field == null || field.trim().isEmpty()) {
+            return null;
+        }
+
+        ConfigurationSection items = plugin.getConfig().getConfigurationSection("item-shop.items");
+        if (items == null) {
+            return null;
+        }
+
+        for (String key : items.getKeys(false)) {
+            ConfigurationSection itemSection = items.getConfigurationSection(key);
+            ConfigurationSection reward = itemSection == null ? null : itemSection.getConfigurationSection("reward");
+            if (reward == null) {
+                continue;
+            }
+
+            String configured = reward.getString(field, "").trim();
+            if (configured.isEmpty()) {
+                continue;
+            }
+
+            if (expectedValue != null && !configured.equalsIgnoreCase(expectedValue)) {
+                continue;
+            }
+
+            if (matchesConfiguredReward(item, reward)) {
+                return reward;
+            }
+        }
+
+        return null;
+    }
+
+    private boolean matchesConfiguredReward(ItemStack item, ConfigurationSection reward) {
+        Material material = parseMaterial(reward.getString("material"), null);
+        if (material == null || item.getType() != material) {
+            return false;
+        }
+
+        if (reward.contains("data") && item.getDurability() != (short) reward.getInt("data", 0)) {
+            return false;
+        }
+
+        String configuredName = reward.getString("name", "").trim();
+        if (!configuredName.isEmpty()) {
+            return strip(configuredName).equalsIgnoreCase(strip(item));
+        }
+
+        return true;
+    }
+
+    private void launchBridgeEgg(Player player, Arena arena) {
+        TeamColor color = plugin.getTeamManager().getColor(arena, player.getUniqueId());
+        if (color == null) {
+            return;
+        }
+
+        Egg egg = player.launchProjectile(Egg.class);
+        egg.setVelocity(player.getEyeLocation().getDirection().normalize().multiply(1.35D));
+        egg.setMetadata(META_BRIDGE_EGG, new FixedMetadataValue(plugin, true));
+        egg.setMetadata(META_SPECIAL_OWNER, new FixedMetadataValue(plugin, player.getUniqueId().toString()));
+        startBridgeEggTask(egg, arena, color);
+    }
+
+    private void startBridgeEggTask(final Egg egg, final Arena arena, final TeamColor color) {
+        final int[] taskId = new int[1];
+        taskId[0] = plugin.getServer().getScheduler().scheduleSyncRepeatingTask(plugin, new Runnable() {
+            @Override
+            public void run() {
+                if (egg == null || !egg.isValid() || egg.isDead() || arena == null || arena.getState() != ArenaState.INGAME) {
+                    plugin.getServer().getScheduler().cancelTask(taskId[0]);
+                    return;
+                }
+
+                Vector direction = egg.getVelocity() == null ? new Vector(0.0D, 0.0D, 0.0D) : egg.getVelocity().clone();
+                if (direction.lengthSquared() > 0.01D) {
+                    direction.normalize();
+                }
+
+                placeBridgeBlock(arena, color, egg.getLocation().clone().subtract(0.0D, 1.15D, 0.0D));
+                placeBridgeBlock(arena, color, egg.getLocation().clone().add(direction.multiply(0.55D)).subtract(0.0D, 1.15D, 0.0D));
+            }
+        }, 1L, 1L);
+    }
+
+    private void placeBridgeBlock(Arena arena, TeamColor color, Location location) {
+        if (arena == null || color == null || location == null || location.getWorld() == null) {
+            return;
+        }
+
+        org.bukkit.block.Block block = location.getBlock();
+        if (block.getType() != Material.AIR) {
+            return;
+        }
+
+        arena.registerSnapshot(block.getState());
+        block.setType(Material.WOOL);
+        block.setData((byte) color.getWoolData());
+        arena.addPlacedBlock(block.getLocation());
+    }
+
+    private void launchBugBomb(Player player, Arena arena, ConfigurationSection reward) {
+        TeamColor color = plugin.getTeamManager().getColor(arena, player.getUniqueId());
+        if (color == null) {
+            return;
+        }
+
+        Snowball snowball = player.launchProjectile(Snowball.class);
+        snowball.setVelocity(player.getEyeLocation().getDirection().normalize().multiply(1.15D));
+        snowball.setMetadata(META_BUG_BOMB, new FixedMetadataValue(plugin, true));
+        snowball.setMetadata(META_SUPPORT_TEAM, new FixedMetadataValue(plugin, color.name()));
+        snowball.setMetadata(META_SPECIAL_OWNER, new FixedMetadataValue(plugin, player.getUniqueId().toString()));
+        snowball.setMetadata(META_SUPPORT_DURATION, new FixedMetadataValue(plugin, reward == null ? 15 : reward.getInt("duration-seconds", 15)));
+    }
+
+    private void spawnBugBombMob(Projectile projectile) {
+        if (projectile == null || projectile.getWorld() == null) {
+            return;
+        }
+
+        Player owner = getExplosiveOwner(projectile);
+        if (owner == null) {
+            return;
+        }
+
+        Arena arena = plugin.getArenaManager().getArenaByPlayer(owner.getUniqueId());
+        if (arena == null || arena.getState() != ArenaState.INGAME) {
+            return;
+        }
+
+        TeamColor color = plugin.getTeamManager().getColor(arena, owner.getUniqueId());
+        if (color == null) {
+            return;
+        }
+
+        Location spawnLocation = findMobSpawnLocation(projectile.getLocation(), false);
+        if (spawnLocation == null) {
+            return;
+        }
+
+        Silverfish silverfish = projectile.getWorld().spawn(spawnLocation, Silverfish.class);
+        silverfish.setCustomNameVisible(false);
+        int durationSeconds = projectile.hasMetadata(META_SUPPORT_DURATION)
+            ? projectile.getMetadata(META_SUPPORT_DURATION).get(0).asInt()
+            : 15;
+        startSupportMobTask(silverfish, arena, color, durationSeconds, 12.0D);
+    }
+
+    private void spawnIronGolem(Player player, Arena arena, PlayerInteractEvent event, ConfigurationSection reward) {
+        TeamColor color = plugin.getTeamManager().getColor(arena, player.getUniqueId());
+        if (color == null) {
+            return;
+        }
+
+        Location preferred = event.getClickedBlock() == null
+            ? player.getLocation().add(player.getLocation().getDirection().normalize())
+            : event.getClickedBlock().getRelative(event.getBlockFace()).getLocation().add(0.5D, 0.0D, 0.5D);
+        Location spawnLocation = findMobSpawnLocation(preferred, true);
+        if (spawnLocation == null) {
+            return;
+        }
+
+        IronGolem golem = player.getWorld().spawn(spawnLocation, IronGolem.class);
+        try {
+            golem.setPlayerCreated(true);
+        } catch (Throwable ignored) {
+        }
+        golem.setCustomNameVisible(false);
+        removeOneFromHand(player);
+        startSupportMobTask(golem, arena, color, reward == null ? 240 : reward.getInt("duration-seconds", 240), 18.0D);
+    }
+
+    private Location findMobSpawnLocation(Location preferred, boolean requireLargeSpace) {
+        if (preferred == null || preferred.getWorld() == null) {
+            return null;
+        }
+
+        Location base = preferred.getBlock().getLocation();
+        for (int y = -1; y <= 2; y++) {
+            for (int x = -1; x <= 1; x++) {
+                for (int z = -1; z <= 1; z++) {
+                    Location candidate = base.clone().add(x, y, z).add(0.5D, 0.0D, 0.5D);
+                    if (isFreeMobSpace(candidate, requireLargeSpace)) {
+                        return candidate;
+                    }
+                }
+            }
+        }
+        return null;
+    }
+
+    private boolean isFreeMobSpace(Location location, boolean requireLargeSpace) {
+        if (location == null || location.getWorld() == null) {
+            return false;
+        }
+
+        org.bukkit.block.Block feet = location.getBlock();
+        org.bukkit.block.Block head = feet.getRelative(org.bukkit.block.BlockFace.UP);
+        org.bukkit.block.Block top = head.getRelative(org.bukkit.block.BlockFace.UP);
+        org.bukkit.block.Block floor = feet.getRelative(org.bukkit.block.BlockFace.DOWN);
+        if (feet.getType() != Material.AIR || head.getType() != Material.AIR) {
+            return false;
+        }
+
+        if (requireLargeSpace && top.getType() != Material.AIR) {
+            return false;
+        }
+
+        return floor.getType().isSolid();
+    }
+
+    private void startSupportMobTask(final Creature creature, final Arena arena, final TeamColor teamColor, final int durationSeconds, final double range) {
+        if (creature == null || arena == null || teamColor == null) {
+            return;
+        }
+
+        creature.setMetadata(META_SUPPORT_TEAM, new FixedMetadataValue(plugin, teamColor.name()));
+        final long expireAt = System.currentTimeMillis() + (durationSeconds * 1000L);
+        final int[] taskId = new int[1];
+        taskId[0] = plugin.getServer().getScheduler().scheduleSyncRepeatingTask(plugin, new Runnable() {
+            @Override
+            public void run() {
+                if (creature == null || !creature.isValid() || creature.isDead() || arena.getState() != ArenaState.INGAME) {
+                    if (creature != null && creature.isValid()) {
+                        creature.remove();
+                    }
+                    plugin.getServer().getScheduler().cancelTask(taskId[0]);
+                    return;
+                }
+
+                if (System.currentTimeMillis() >= expireAt) {
+                    creature.remove();
+                    plugin.getServer().getScheduler().cancelTask(taskId[0]);
+                    return;
+                }
+
+                Player target = findNearestEnemyPlayer(arena, teamColor, creature.getLocation(), range);
+                creature.setTarget(target);
+            }
+        }, 1L, 10L);
+    }
+
+    private Player findNearestEnemyPlayer(Arena arena, TeamColor teamColor, Location source, double range) {
+        if (arena == null || teamColor == null || source == null || source.getWorld() == null) {
+            return null;
+        }
+
+        double bestDistance = range * range;
+        Player best = null;
+        for (UUID uniqueId : arena.getPlayers()) {
+            if (arena.getSpectators().contains(uniqueId) || plugin.getGameManager().isRespawning(uniqueId)) {
+                continue;
+            }
+
+            if (teamColor == plugin.getTeamManager().getColor(arena, uniqueId)) {
+                continue;
+            }
+
+            Player player = plugin.getServer().getPlayer(uniqueId);
+            if (player == null || !player.isOnline() || !player.getWorld().getName().equalsIgnoreCase(source.getWorld().getName())) {
+                continue;
+            }
+
+            double distance = player.getLocation().distanceSquared(source);
+            if (distance <= bestDistance) {
+                bestDistance = distance;
+                best = player;
+            }
+        }
+        return best;
+    }
+
+    private boolean canSupportMobHit(Entity damager, Player target) {
+        if (damager == null || target == null || !damager.hasMetadata(META_SUPPORT_TEAM)) {
+            return false;
+        }
+
+        Arena arena = plugin.getArenaManager().getArenaByPlayer(target.getUniqueId());
+        if (arena == null || arena.getState() != ArenaState.INGAME) {
+            return false;
+        }
+
+        if (arena.getSpectators().contains(target.getUniqueId()) || plugin.getGameManager().isRespawning(target.getUniqueId())) {
+            return false;
+        }
+
+        TeamColor supportTeam;
+        try {
+            supportTeam = TeamColor.valueOf(damager.getMetadata(META_SUPPORT_TEAM).get(0).asString());
+        } catch (Exception ignored) {
+            return false;
+        }
+
+        TeamColor targetTeam = plugin.getTeamManager().getColor(arena, target.getUniqueId());
+        return targetTeam != null && supportTeam != targetTeam;
+    }
+
+    private boolean isSupportMob(Entity entity) {
+        return entity instanceof Creature && entity != null && entity.hasMetadata(META_SUPPORT_TEAM);
+    }
+
+    private Material parseMaterial(String raw, Material fallback) {
+        if (raw == null || raw.trim().isEmpty()) {
+            return fallback;
+        }
+
+        try {
+            return Material.valueOf(raw.trim().toUpperCase(Locale.ENGLISH));
+        } catch (IllegalArgumentException exception) {
+            return fallback;
+        }
+    }
+
+    private String strip(ItemStack item) {
+        if (item == null || !item.hasItemMeta() || !item.getItemMeta().hasDisplayName()) {
+            return "";
+        }
+        return strip(item.getItemMeta().getDisplayName());
+    }
+
+    private String strip(String text) {
+        return org.bukkit.ChatColor.stripColor(ChatUtil.color(text == null ? "" : text));
     }
 
     private void launchFireball(Player player) {
@@ -206,6 +685,7 @@ public class GameItemListener implements Listener {
             velocity = limitVelocity(velocity, maxVelocity);
             target.setVelocity(velocity);
             target.setFallDistance(0.0F);
+            trackFallDamageProtection(target, configPath);
         }
     }
 
@@ -287,6 +767,7 @@ public class GameItemListener implements Listener {
             velocity = limitVelocity(velocity, maxVelocity);
             target.setVelocity(velocity);
             target.setFallDistance(0.0F);
+            trackFallDamageProtection(target, configPath);
         }
 
         pushNearbyTnt(tnt, origin, chainRadius, chainHorizontal, chainVertical, chainMaxVelocity);
@@ -482,6 +963,13 @@ public class GameItemListener implements Listener {
                 iterator.remove();
             }
         }
+
+        Iterator<Map.Entry<UUID, FallDamageProtection>> protectionIterator = fallDamageProtections.entrySet().iterator();
+        while (protectionIterator.hasNext()) {
+            if (protectionIterator.next().getValue().expireAt < now) {
+                protectionIterator.remove();
+            }
+        }
     }
 
     private void removeOneFromHand(Player player) {
@@ -508,6 +996,44 @@ public class GameItemListener implements Listener {
         private RecentBlast(Location location, double radius, long expireAt) {
             this.location = location;
             this.radius = radius;
+            this.expireAt = expireAt;
+        }
+    }
+
+    private void trackFallDamageProtection(Player player, String configPath) {
+        if (player == null || configPath == null || !isFallDamageCapEnabled(configPath)) {
+            return;
+        }
+
+        cleanupBlasts();
+        int durationTicks = Math.max(1, plugin.getConfig().getInt(configPath + ".fall-damage-cap.duration-ticks", 120));
+        double minimumHearts = Math.max(0.5D, plugin.getConfig().getDouble(configPath + ".fall-damage-cap.minimum-hearts", 5.0D));
+        long expireAt = System.currentTimeMillis() + (durationTicks * 50L);
+        fallDamageProtections.put(player.getUniqueId(), new FallDamageProtection(configPath, minimumHearts, expireAt));
+    }
+
+    private FallDamageProtection consumeFallDamageProtection(UUID uniqueId) {
+        if (uniqueId == null) {
+            return null;
+        }
+
+        cleanupBlasts();
+        return fallDamageProtections.remove(uniqueId);
+    }
+
+    private boolean isFallDamageCapEnabled(String configPath) {
+        return plugin.getConfig().getBoolean(configPath + ".fall-damage-cap.enabled", false);
+    }
+
+    private static final class FallDamageProtection {
+
+        private final String configPath;
+        private final double minimumHearts;
+        private final long expireAt;
+
+        private FallDamageProtection(String configPath, double minimumHearts, long expireAt) {
+            this.configPath = configPath;
+            this.minimumHearts = minimumHearts;
             this.expireAt = expireAt;
         }
     }

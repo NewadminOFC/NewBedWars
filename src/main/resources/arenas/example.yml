@@ -2,6 +2,7 @@ name: example
 world: world
 ready: false
 state: WAITING
+anti-void-y: null
 waiting-spawn:
   world: world
   x: 0.5

@@ -39,12 +39,17 @@ public class LobbyManager {
     }
 
     public Location getMainWorldSpawn() {
+        Location lobby = getLobby();
+        if (lobby != null) {
+            return lobby;
+        }
+
         World world = LocationUtil.ensureWorldLoaded("world");
         if (world != null) {
             return world.getSpawnLocation();
         }
 
-        return getLobby();
+        return null;
     }
 
     public boolean teleportToMainWorld(Player player) {

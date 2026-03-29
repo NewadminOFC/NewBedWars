@@ -27,12 +27,15 @@ setup:
   waiting-pos1-set: "%prefix%&aPosicao 1 da sala de espera definida."
   waiting-pos2-set: "%prefix%&aPosicao 2 da sala de espera definida."
   waiting-area-complete: "%prefix%&aSala de espera configurada. O menu principal foi liberado."
-  open-menu: "%prefix%&eUse a estrela para salvar o spawn de espera e os itens &f/pos1 &ee &f/pos2 &epara marcar a sala de espera."
+  open-menu: "%prefix%&eUse a bussola para abrir o menu do setup. Os itens de configuracao vao aparecer so quando voce escolher cada etapa."
+  pos-tools-help: "%prefix%&7Os itens &a/pos1 &7e &c/pos2 &7servem para marcar os dois cantos de regioes como sala de espera, ilha e protecao."
   menu-unlocked: "%prefix%&aMenu principal da arena liberado."
   select-block: "%prefix%&eClique no bloco desejado para definir &f%action%&e."
+  select-spawn-block: "%prefix%&eClique no bloco desejado para definir &f%action%&e. O spawn sera salvo em cima dele."
   select-location: "%prefix%&eVa ate o local e clique com botao direito para definir &f%action%&e."
   region-selection-started: "%prefix%&eVa ate o inicio e o fim da regiao e use os itens &f/pos1 &ee &f/pos2 &epara definir &f%action%&e."
-  region-not-selected: "%prefix%&cEscolha primeiro no menu qual regiao voce quer marcar."
+  region-tool-reminder: "%prefix%&7Dica: use o &a/pos1 &7no primeiro canto e o &c/pos2 &7no segundo canto da regiao."
+  region-not-selected: "%prefix%&cEscolha primeiro no menu qual regiao voce quer marcar. Depois use os itens &a/pos1 &7e &c/pos2&c."
   selection-pos1: "%prefix%&aPosicao 1 definida para &f%action%&a."
   selection-pos2: "%prefix%&aPosicao 2 definida para &f%action%&a."
   selection-complete: "%prefix%&aRegiao de &f%action% &asalva com sucesso."
@@ -54,14 +57,14 @@ game:
   joined: "%prefix%&aVoce entrou na arena &f%arena%&a."
   joined-waiting: "%prefix%&aVoce entrou na arena &f%arena%&a."
   left: "%prefix%&eVoce saiu da arena."
-  join-broadcast: "%prefix%&f%player% &7entrou na arena. &f(%players%/%max_players%)"
-  leave-broadcast: "%prefix%&f%player% &7saiu da arena. &f(%players%/%max_players%)"
+  join-broadcast: "&7%player% &eentrou na sala &b(%players%/%max_players%)"
+  leave-broadcast: "&7%player% &esaiu da sala &b(%players%/%max_players%)"
   arena-not-ready: "%prefix%&cEsta arena ainda nao esta pronta para uso."
   arena-full: "%prefix%&cEsta arena esta lotada."
   arena-running: "%prefix%&cA partida desta arena ja comecou."
-  countdown: "%prefix%&eA partida inicia em &f%seconds% &esegundos."
-  countdown-cancelled: "%prefix%&cContagem cancelada por falta de jogadores."
-  game-started: "%prefix%&aA partida comecou."
+  countdown: "&eO jogo inicia em &6%seconds% &esegundos!"
+  countdown-cancelled: "&cA contagem foi cancelada por falta de jogadores."
+  game-started: "&aA partida comecou!"
   team-assigned: "%prefix%&aVoce foi enviado para o time %team%&a."
   team-selector-selected: "%prefix%&aVoce escolheu o time %team%&a."
   team-selector-already: "%prefix%&eVoce ja esta no time %team%&e."
@@ -76,6 +79,39 @@ game:
   not-enough-players: "%prefix%&cJogadores insuficientes para iniciar."
   no-arena-available: "%prefix%&cNenhuma arena 1v1 disponivel no momento."
 
+titles:
+  game:
+    countdown:
+      title: "&e&l%seconds%"
+      subtitle: "&fA partida vai comecar"
+    start:
+      title: "&a&lPARTIDA INICIADA"
+      subtitle: "&fTime: %team%"
+    bed-destroyed:
+      title: "&c&lSUA CAMA FOI DESTRUIDA!"
+      subtitle: "&7Agora voce esta em morte final."
+    bed-break:
+      title: "&a&lCAMA DESTRUIDA!"
+      subtitle: "&f%team%"
+    respawn-countdown:
+      title: "&c&lVOCE MORREU"
+      subtitle: "&fRespawn em &e%seconds%s"
+    respawned:
+      title: "&a&lRESPAWN"
+      subtitle: "&fVoce voltou para %team%"
+    final-death:
+      title: "&4&lELIMINADO"
+      subtitle: "&7Voce agora e espectador."
+    win:
+      title: "&a&lVITORIA!"
+      subtitle: "&fSeu time venceu a partida."
+    lose:
+      title: "&c&lDERROTA!"
+      subtitle: "&fVencedor: %team%"
+    draw:
+      title: "&e&lEMPATE"
+      subtitle: "&fA partida terminou sem vencedor."
+
 npc:
   created: "%prefix%&aNPC 1v1 criado com sucesso. &7ID: &f%id% &7Skin: &f%skin%"
   skin-updated: "%prefix%&aSkin do NPC &f%id% &aatualizada para &f%skin%&a."
@@ -85,6 +121,16 @@ npc:
 shops:
   items-title: "&8Loja de Itens"
   upgrades-title: "&8Loja de Melhorias"
+  need-currency: "%prefix%&cVoce precisa de &f%amount% %currency%&c."
+  buy-success: "%prefix%&aVoce comprou &f%item%&a."
+  sword-already-better: "%prefix%&cVoce ja possui essa espada ou uma melhor."
+  armor-already-better: "%prefix%&cVoce ja possui essa armadura ou uma melhor."
+  pickaxe-already-maxed: "%prefix%&cSua picareta ja esta no maximo."
+  axe-already-maxed: "%prefix%&cSeu machado ja esta no maximo."
+  upgrade-already-owned: "%prefix%&cSeu time ja possui &f%upgrade%&c."
+  upgrade-maxed: "%prefix%&c%upgrade% &cja esta no maximo."
+  upgrade-purchased: "%prefix%&aSeu time comprou &f%upgrade%&a."
+  upgrade-tier-purchased: "%prefix%&aSeu time melhorou &f%upgrade% &apara nivel &f%level%&a."
   placeholder: "&7Estrutura base pronta para expansao."
 
 errors:

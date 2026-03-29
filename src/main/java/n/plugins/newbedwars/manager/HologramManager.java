@@ -16,11 +16,11 @@ import org.bukkit.entity.EntityType;
 public class HologramManager {
 
     private final NewBedWars plugin;
-    private final Map<String, NpcHologram> teamChestHolograms;
+    private final Map<String, NpcHologram> chestHolograms;
 
     public HologramManager(NewBedWars plugin) {
         this.plugin = plugin;
-        this.teamChestHolograms = new HashMap<String, NpcHologram>();
+        this.chestHolograms = new HashMap<String, NpcHologram>();
     }
 
     public boolean isEnabled() {
@@ -29,6 +29,10 @@ public class HologramManager {
 
     public boolean isTeamChestHologramEnabled() {
         return plugin.getConfig().getBoolean("settings.team-chest-holograms", true);
+    }
+
+    public boolean isEnderChestHologramEnabled() {
+        return plugin.getConfig().getBoolean("settings.ender-chest-holograms", true);
     }
 
     public void refreshArenaChestHolograms(Arena arena) {
@@ -52,12 +56,33 @@ public class HologramManager {
                 continue;
             }
 
-            NpcHologram hologram = new NpcHologram();
-            hologram.addLine(spawnLine(LocationUtil.topCenter(location).add(0.0D, 0.95D, 0.0D),
-                ChatUtil.color(plugin.getConfig().getString("team-chest-hologram.top", "&6&lBAU"))));
-            hologram.addLine(spawnLine(LocationUtil.topCenter(location).add(0.0D, 0.70D, 0.0D),
-                ChatUtil.color(plugin.getConfig().getString("team-chest-hologram.bottom", "&eClique para guardar"))));
-            teamChestHolograms.put(buildKey(arena, color), hologram);
+            chestHolograms.put(buildKey(arena, color, "team"), createTwoLineHologram(
+                location,
+                plugin.getConfig().getString("team-chest-hologram.top", "&6&lBAU"),
+                plugin.getConfig().getString("team-chest-hologram.bottom", "&eClique para guardar")
+            ));
+        }
+
+        if (!isEnderChestHologramEnabled()) {
+            return;
+        }
+
+        for (TeamColor color : plugin.getTeamManager().getActiveColors()) {
+            ArenaTeam team = arena.getTeam(color);
+            if (team == null || team.getEnderChestLocation() == null) {
+                continue;
+            }
+
+            Location location = arena.getMatchLocation(team.getEnderChestLocation());
+            if (location == null || location.getWorld() == null) {
+                continue;
+            }
+
+            chestHolograms.put(buildKey(arena, color, "ender"), createTwoLineHologram(
+                location,
+                plugin.getConfig().getString("ender-chest-hologram.top", "&5&lENDER CHEST"),
+                plugin.getConfig().getString("ender-chest-hologram.bottom", "&eClique para abrir"
+            )));
         }
     }
 
@@ -72,23 +97,35 @@ public class HologramManager {
     }
 
     public void shutdown() {
-        for (NpcHologram hologram : teamChestHolograms.values()) {
+        for (NpcHologram hologram : chestHolograms.values()) {
             if (hologram != null) {
                 hologram.clear();
             }
         }
-        teamChestHolograms.clear();
+        chestHolograms.clear();
     }
 
     private void clearTeamChestHologram(Arena arena, TeamColor color) {
-        NpcHologram hologram = teamChestHolograms.remove(buildKey(arena, color));
+        clearHologram(buildKey(arena, color, "team"));
+        clearHologram(buildKey(arena, color, "ender"));
+    }
+
+    private void clearHologram(String key) {
+        NpcHologram hologram = chestHolograms.remove(key);
         if (hologram != null) {
             hologram.clear();
         }
     }
 
-    private String buildKey(Arena arena, TeamColor color) {
-        return arena.getName().toLowerCase() + ":" + color.name();
+    private String buildKey(Arena arena, TeamColor color, String type) {
+        return arena.getName().toLowerCase() + ":" + color.name() + ":" + type;
+    }
+
+    private NpcHologram createTwoLineHologram(Location location, String top, String bottom) {
+        NpcHologram hologram = new NpcHologram();
+        hologram.addLine(spawnLine(LocationUtil.topCenter(location).add(0.0D, 0.95D, 0.0D), ChatUtil.color(top)));
+        hologram.addLine(spawnLine(LocationUtil.topCenter(location).add(0.0D, 0.70D, 0.0D), ChatUtil.color(bottom)));
+        return hologram;
     }
 
     private ArmorStand spawnLine(Location location, String text) {

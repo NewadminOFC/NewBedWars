@@ -16,6 +16,8 @@ import n.plugins.newbedwars.model.PlayerSnapshot;
 import n.plugins.newbedwars.util.ItemBuilder;
 import n.plugins.newbedwars.util.ChatUtil;
 import n.plugins.newbedwars.util.CuboidRegion;
+import n.plugins.newbedwars.util.SoundUtil;
+import n.plugins.newbedwars.util.TitleUtil;
 import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
 import org.bukkit.Location;
@@ -117,20 +119,47 @@ public class GameManager {
         player.updateInventory();
     }
 
+    public void giveEndingLobbyItems(Arena arena) {
+        if (arena == null) {
+            return;
+        }
+
+        for (UUID uniqueId : new ArrayList<UUID>(arena.getPlayers())) {
+            Player player = Bukkit.getPlayer(uniqueId);
+            if (player == null || !player.isOnline()) {
+                continue;
+            }
+
+            clearPendingRespawn(uniqueId);
+            int leaveSlot = resolveHotbarSlot("pre-game-items.leave-arena.slot", 8);
+            player.getInventory().setItem(leaveSlot, createLeaveArenaItem());
+            player.setLevel(0);
+            player.setExp(0.0F);
+            player.updateInventory();
+        }
+    }
+
     public boolean handleWaitingLobbyItemUse(Player player, ItemStack item) {
         if (player == null || item == null) {
             return false;
         }
 
         Arena arena = plugin.getArenaManager().getArenaByPlayer(player.getUniqueId());
-        if (!isPreGameArena(arena) || arena.getSpectators().contains(player.getUniqueId())) {
+        if (arena == null) {
             return false;
         }
 
         if (item.getType() == Material.BED) {
+            if (!isPreGameArena(arena) && arena.getState() != ArenaState.ENDING) {
+                return false;
+            }
             player.closeInventory();
             leaveArena(player, true);
             return true;
+        }
+
+        if (!isPreGameArena(arena) || arena.getSpectators().contains(player.getUniqueId())) {
+            return false;
         }
 
         if (item.getType() == Material.WOOL || item.getType() == Material.SKULL_ITEM) {
@@ -263,17 +292,19 @@ public class GameManager {
             return;
         }
 
-        Location deathLocation = player.getLocation().clone();
+        Location spectatorLocation = resolveDeathSpectatorLocation(arena);
         if (team.isBedDestroyed()) {
             arena.getSpectators().add(player.getUniqueId());
-            plugin.getTeamManager().updateEliminationState(arena);
+            pendingRespawns.put(player.getUniqueId(), new PendingRespawn(spectatorLocation, spectatorLocation, true));
             plugin.getMessageManager().send(player, "game.death-final");
-            pendingRespawns.put(player.getUniqueId(), new PendingRespawn(arena.getSpectatorSpawn(), arena.getSpectatorSpawn(), true));
+            SoundUtil.playConfigured(plugin, player, "sound-effects.final-death", "WITHER_DEATH", 1.0F, 1.0F);
         } else {
+            Location respawnLocation = resolveTeamRespawn(arena, team);
+            pendingRespawns.put(player.getUniqueId(), new PendingRespawn(spectatorLocation, respawnLocation, false));
             plugin.getMessageManager().send(player, "game.death-respawn");
-            pendingRespawns.put(player.getUniqueId(), new PendingRespawn(deathLocation, resolveTeamRespawn(arena, team), false));
         }
 
+        plugin.getTeamManager().updateEliminationState(arena);
         forceInstantRespawn(player);
     }
 
@@ -302,6 +333,7 @@ public class GameManager {
                         if (pendingRespawn.getSpectatorLocation() != null) {
                             teleportSafely(player, pendingRespawn.getSpectatorLocation());
                         }
+                        sendConfiguredTitle(player, "titles.game.final-death", Collections.<String, String>emptyMap(), 5, 50, 10);
                         clearPendingRespawn(player.getUniqueId());
                         checkWin(arena);
                         return;
@@ -372,6 +404,13 @@ public class GameManager {
             TeamColor color = plugin.getTeamManager().getColor(arena, uniqueId);
             if (color == team.getColor()) {
                 plugin.getMessageManager().send(member, "game.your-bed-destroyed");
+                SoundUtil.playConfigured(plugin, member, "sound-effects.own-bed-destroyed", "WITHER_DEATH", 1.0F, 1.0F);
+                sendConfiguredTitle(member, "titles.game.bed-destroyed", placeholders(
+                    "team", team.getColor().getColoredName(),
+                    "player", breaker.getName()
+                ), 5, 60, 10);
+            } else {
+                SoundUtil.playConfigured(plugin, member, "sound-effects.bed-destroyed", "ENDERDRAGON_GROWL", 0.8F, 1.1F);
             }
         }
     }
@@ -382,13 +421,17 @@ public class GameManager {
         }
 
         arena.setState(ArenaState.ENDING);
-        arena.setEndCountdown(plugin.getConfig().getInt("settings.ending-seconds", 8));
+        arena.setEndCountdown(Math.max(1, plugin.getConfig().getInt("settings.ending-seconds", 15)));
 
         if (winner != null) {
             broadcast(arena, "game.winner", placeholders("team", winner.getColoredName(), "arena", arena.getDisplayName()));
         } else {
             broadcast(arena, "game.draw", Collections.<String, String>emptyMap());
         }
+
+        giveEndingLobbyItems(arena);
+        playEndGameSounds(arena, winner);
+        sendEndGameTitles(arena, winner);
     }
 
     public void resetArena(Arena arena) {
@@ -437,6 +480,8 @@ public class GameManager {
 
     private void tickArenas() {
         for (Arena arena : new ArrayList<Arena>(plugin.getArenaManager().getRuntimeArenas())) {
+            maintainArenaWorld(arena);
+
             if (arena.getState() == ArenaState.WAITING) {
                 if (arena.getPlayerCount() >= getRequiredPlayersToStart()) {
                     arena.setState(ArenaState.STARTING);
@@ -469,8 +514,13 @@ public class GameManager {
         }
 
         int seconds = arena.getCountdown();
-        if (seconds == 10 || seconds == 5 || seconds <= 3) {
+        if ((seconds == 10 || seconds == 5 || seconds <= 3) && plugin.getConfig().getBoolean("settings.start-countdown-chat", true)) {
             broadcast(arena, "game.countdown", Collections.singletonMap("seconds", String.valueOf(seconds)));
+        }
+
+        if (seconds == 10 || seconds <= 5) {
+            playCountdownSounds(arena);
+            sendArenaCountdownTitles(arena, seconds);
         }
 
         if (seconds <= 0) {
@@ -514,7 +564,6 @@ public class GameManager {
             teleportSafely(player, joinLocation);
         }
 
-        sendJoinWaitingMessage(player, arena);
         giveWaitingLobbyItems(player);
         broadcast(arena, "game.join-broadcast", placeholders(
             "player", player.getName(),
@@ -578,7 +627,7 @@ public class GameManager {
 
         plugin.getSetupManager().clearArenaSetupVisuals(arena);
         plugin.getNpcManager().refreshArenaShopNpcs(arena);
-        plugin.getHologramManager().clearArenaChestHolograms(arena);
+        plugin.getHologramManager().refreshArenaChestHolograms(arena);
 
         for (UUID uniqueId : new ArrayList<UUID>(arena.getPlayers())) {
             Player player = Bukkit.getPlayer(uniqueId);
@@ -590,12 +639,12 @@ public class GameManager {
             ArenaTeam team = plugin.getTeamManager().getTeam(arena, uniqueId);
             if (team != null) {
                 plugin.getShopManager().applyRespawnLoadout(player, team);
-                plugin.getMessageManager().send(player, "game.team-assigned", Collections.singletonMap("team", team.getColor().getColoredName()));
             }
             Location startLocation = team == null ? resolveLobbySpawn(arena) : resolveTeamRespawn(arena, team);
             if (startLocation != null) {
                 teleportSafely(player, startLocation);
             }
+            SoundUtil.playConfigured(plugin, player, "sound-effects.game-start", "ENDERDRAGON_GROWL", 0.7F, 1.2F);
         }
 
         broadcast(arena, "game.game-started", Collections.<String, String>emptyMap());
@@ -694,7 +743,7 @@ public class GameManager {
     private void startRespawnCountdown(final Player player, final Arena arena, final Location respawnLocation) {
         clearRespawnTask(player.getUniqueId());
 
-        final int[] seconds = new int[] {5};
+        final int[] seconds = new int[] {Math.max(1, plugin.getConfig().getInt("settings.respawn-seconds", 5))};
         int task = Bukkit.getScheduler().scheduleSyncRepeatingTask(plugin, new Runnable() {
             @Override
             public void run() {
@@ -710,6 +759,7 @@ public class GameManager {
 
                 if (seconds[0] <= 0) {
                     ArenaTeam team = plugin.getTeamManager().getTeam(arena, player.getUniqueId());
+                    arena.getSpectators().remove(player.getUniqueId());
                     preparePlayer(player);
                     if (team != null) {
                         plugin.getShopManager().applyRespawnLoadout(player, team);
@@ -717,12 +767,20 @@ public class GameManager {
                     if (respawnLocation != null) {
                         teleportSafely(player, respawnLocation);
                     }
+                    SoundUtil.playConfigured(plugin, player, "sound-effects.respawn", "LEVEL_UP", 1.0F, 1.1F);
+                    sendConfiguredTitle(player, "titles.game.respawned", placeholders(
+                        "team", team == null ? "&7Sem time" : team.getColor().getColoredName()
+                    ), 5, 30, 10);
                     clearPendingRespawn(player.getUniqueId());
+                    plugin.getTeamManager().updateEliminationState(arena);
                     return;
                 }
 
                 player.setLevel(seconds[0]);
-                player.sendMessage(plugin.getMessageManager().get("prefix") + ChatUtil.color("&aRespawn em &f" + seconds[0] + "s&a."));
+                if (plugin.getConfig().getBoolean("settings.respawn-countdown-chat", false)) {
+                    player.sendMessage(plugin.getMessageManager().get("prefix") + ChatUtil.color("&aRespawn em &f" + seconds[0] + "s&a."));
+                }
+                sendConfiguredTitle(player, "titles.game.respawn-countdown", Collections.singletonMap("seconds", String.valueOf(seconds[0])), 0, 25, 0);
                 seconds[0]--;
             }
         }, 0L, 20L);
@@ -891,6 +949,19 @@ public class GameManager {
         return resolveLobbySpawn(arena);
     }
 
+    private Location resolveDeathSpectatorLocation(Arena arena) {
+        if (arena == null) {
+            return null;
+        }
+
+        Location waitingSpawn = resolveLobbySpawn(arena);
+        if (waitingSpawn != null) {
+            return waitingSpawn;
+        }
+
+        return arena.getSpectatorSpawn();
+    }
+
     private Map<String, String> placeholders(String... values) {
         Map<String, String> map = new HashMap<String, String>();
         for (int i = 0; i + 1 < values.length; i += 2) {
@@ -951,5 +1022,125 @@ public class GameManager {
                 }
             }
         }, 1L);
+    }
+
+    private void maintainArenaWorld(Arena arena) {
+        if (arena == null || arena.getMatchWorld() == null) {
+            return;
+        }
+
+        if (plugin.getConfig().getBoolean("settings.arena-always-day", true)) {
+            arena.getMatchWorld().setGameRuleValue("doDaylightCycle", "false");
+            arena.getMatchWorld().setTime(1000L);
+        }
+
+        if (plugin.getConfig().getBoolean("settings.arena-clear-weather", true)) {
+            arena.getMatchWorld().setStorm(false);
+            arena.getMatchWorld().setThundering(false);
+            arena.getMatchWorld().setWeatherDuration(Integer.MAX_VALUE);
+            arena.getMatchWorld().setThunderDuration(Integer.MAX_VALUE);
+        }
+    }
+
+    private void sendArenaCountdownTitles(Arena arena, int seconds) {
+        if (arena == null) {
+            return;
+        }
+
+        Map<String, String> placeholders = Collections.singletonMap("seconds", String.valueOf(seconds));
+        for (UUID uniqueId : arena.getPlayers()) {
+            Player player = Bukkit.getPlayer(uniqueId);
+            if (player == null || !player.isOnline()) {
+                continue;
+            }
+
+            sendConfiguredTitle(player, "titles.game.countdown", placeholders, 0, 25, 5);
+        }
+    }
+
+    private void playCountdownSounds(Arena arena) {
+        if (arena == null) {
+            return;
+        }
+
+        for (UUID uniqueId : arena.getPlayers()) {
+            Player player = Bukkit.getPlayer(uniqueId);
+            if (player == null || !player.isOnline()) {
+                continue;
+            }
+
+            SoundUtil.playConfigured(plugin, player, "sound-effects.countdown", "NOTE_PLING", 1.0F, 1.5F);
+        }
+    }
+
+    private void sendEndGameTitles(Arena arena, TeamColor winner) {
+        if (arena == null) {
+            return;
+        }
+
+        for (UUID uniqueId : arena.getPlayers()) {
+            Player player = Bukkit.getPlayer(uniqueId);
+            if (player == null || !player.isOnline()) {
+                continue;
+            }
+
+            if (winner == null) {
+                sendConfiguredTitle(player, "titles.game.draw", Collections.<String, String>emptyMap(), 10, 60, 10);
+                continue;
+            }
+
+            TeamColor playerTeam = plugin.getTeamManager().getColor(arena, uniqueId);
+            if (playerTeam == winner) {
+                sendConfiguredTitle(player, "titles.game.win", Collections.singletonMap("team", winner.getColoredName()), 10, 60, 10);
+            } else {
+                sendConfiguredTitle(player, "titles.game.lose", Collections.singletonMap("team", winner.getColoredName()), 10, 60, 10);
+            }
+        }
+    }
+
+    private void playEndGameSounds(Arena arena, TeamColor winner) {
+        if (arena == null) {
+            return;
+        }
+
+        for (UUID uniqueId : arena.getPlayers()) {
+            Player player = Bukkit.getPlayer(uniqueId);
+            if (player == null || !player.isOnline()) {
+                continue;
+            }
+
+            if (winner == null) {
+                SoundUtil.playConfigured(plugin, player, "sound-effects.draw", "NOTE_PLING", 1.0F, 1.0F);
+                continue;
+            }
+
+            TeamColor playerTeam = plugin.getTeamManager().getColor(arena, uniqueId);
+            if (playerTeam == winner) {
+                SoundUtil.playConfigured(plugin, player, "sound-effects.victory", "LEVEL_UP", 1.0F, 1.1F);
+            } else {
+                SoundUtil.playConfigured(plugin, player, "sound-effects.defeat", "WITHER_DEATH", 0.7F, 1.0F);
+            }
+        }
+    }
+
+    private void sendConfiguredTitle(Player player, String basePath, Map<String, String> placeholders, int fadeIn, int stay, int fadeOut) {
+        if (player == null || !player.isOnline() || !plugin.getConfig().getBoolean("settings.titles", true)) {
+            return;
+        }
+
+        String title = getOptionalMessage(basePath + ".title", placeholders);
+        String subtitle = getOptionalMessage(basePath + ".subtitle", placeholders);
+        if ((title == null || title.trim().isEmpty()) && (subtitle == null || subtitle.trim().isEmpty())) {
+            return;
+        }
+
+        TitleUtil.sendTitle(player, title, subtitle, fadeIn, stay, fadeOut);
+    }
+
+    private String getOptionalMessage(String path, Map<String, String> placeholders) {
+        if (!plugin.getMessageManager().getConfiguration().contains(path)) {
+            return "";
+        }
+        return plugin.getMessageManager().get(path, placeholders);
     }
 }

@@ -26,6 +26,7 @@ public class ArenaTeam {
     private boolean sharpenedSwords;
     private int protectionTier;
     private int maniacMinerTier;
+    private int toolEnchantTier;
     private boolean healPool;
 
     public ArenaTeam(TeamColor color) {
@@ -159,6 +160,7 @@ public class ArenaTeam {
         this.sharpenedSwords = false;
         this.protectionTier = 0;
         this.maniacMinerTier = 0;
+        this.toolEnchantTier = 0;
         this.healPool = false;
     }
 
@@ -184,6 +186,14 @@ public class ArenaTeam {
 
     public void setManiacMinerTier(int maniacMinerTier) {
         this.maniacMinerTier = maniacMinerTier;
+    }
+
+    public int getToolEnchantTier() {
+        return toolEnchantTier;
+    }
+
+    public void setToolEnchantTier(int toolEnchantTier) {
+        this.toolEnchantTier = toolEnchantTier;
     }
 
     public boolean hasHealPool() {

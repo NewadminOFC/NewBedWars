@@ -70,9 +70,7 @@ public class SetupManager {
             teleportToArena(player, arena);
             giveItems(player, existing, arena);
             refreshArenaSetupVisuals(arena);
-            if (existing.isUnlockedMainMenu()) {
-                plugin.getMenuManager().openSetupMainMenu(player, arena);
-            }
+            plugin.getMenuManager().openSetupMainMenu(player, arena);
             plugin.getMessageManager().send(player, "setup.already-setting-up");
             return;
         }
@@ -84,7 +82,7 @@ public class SetupManager {
             player.getInventory().getContents().clone(),
             player.getInventory().getArmorContents().clone()
         );
-        session.setUnlockedMainMenu(hasWaitingSetup(arena));
+        session.setUnlockedMainMenu(true);
         sessions.put(player.getUniqueId(), session);
 
         player.getInventory().clear();
@@ -95,9 +93,8 @@ public class SetupManager {
 
         plugin.getMessageManager().send(player, "setup.session-started", Collections.singletonMap("arena", arena.getName()));
         plugin.getMessageManager().send(player, "setup.open-menu");
-        if (session.isUnlockedMainMenu()) {
-            plugin.getMenuManager().openSetupMainMenu(player, arena);
-        }
+        plugin.getMessageManager().send(player, "setup.pos-tools-help");
+        plugin.getMenuManager().openSetupMainMenu(player, arena);
     }
 
     public void stopSession(Player player, boolean notify) {
@@ -141,13 +138,13 @@ public class SetupManager {
         session.setPendingRegionAction(null);
         session.setPendingRegionTeam(null);
         session.clearSelection();
+        preparePointActionInventory(player, action);
         if (!action.isBlockRequired()) {
             handlePendingPoint(player, null);
             return;
         }
         player.closeInventory();
-        plugin.getMessageManager().send(player, action.isBlockRequired() ? "setup.select-block" : "setup.select-location",
-            Collections.singletonMap("action", action.getDisplayName()));
+        sendPointSelectionHint(player, action);
     }
 
     public void beginArenaPointSetup(Player player, Arena arena, SetupPointAction action) {
@@ -161,13 +158,13 @@ public class SetupManager {
         session.setPendingRegionAction(null);
         session.setPendingRegionTeam(null);
         session.clearSelection();
+        preparePointActionInventory(player, action);
         if (!action.isBlockRequired()) {
             handlePendingPoint(player, null);
             return;
         }
         player.closeInventory();
-        plugin.getMessageManager().send(player, action.isBlockRequired() ? "setup.select-block" : "setup.select-location",
-            Collections.singletonMap("action", action.getDisplayName()));
+        sendPointSelectionHint(player, action);
     }
 
     public void beginRegionSetup(Player player, Arena arena, TeamColor color, SetupRegionAction action) {
@@ -182,8 +179,10 @@ public class SetupManager {
         session.setPendingRegionTeam(color);
         session.clearSelection();
         player.closeInventory();
+        giveRegionTools(player);
         plugin.getMessageManager().send(player, "setup.region-selection-started",
             Collections.singletonMap("action", action.getDisplayName()));
+        plugin.getMessageManager().send(player, "setup.region-tool-reminder");
     }
 
     public void beginArenaRegionSetup(Player player, Arena arena, SetupRegionAction action) {
@@ -198,11 +197,13 @@ public class SetupManager {
         session.setPendingRegionTeam(null);
         session.clearSelection();
         player.closeInventory();
+        giveRegionTools(player);
         plugin.getMessageManager().send(player, "setup.region-selection-started",
             Collections.singletonMap("action", action.getDisplayName()));
+        plugin.getMessageManager().send(player, "setup.region-tool-reminder");
     }
 
-    public boolean handleWaitingSpawnItem(Player player) {
+    public boolean handleWaitingSpawnItem(Player player, Block clickedBlock) {
         SetupSession session = getSession(player);
         if (session == null) {
             return false;
@@ -213,9 +214,16 @@ public class SetupManager {
             return false;
         }
 
-        arena.setWaitingSpawn(player.getLocation());
+        if (clickedBlock == null) {
+            plugin.getMessageManager().send(player, "setup.select-spawn-block",
+                Collections.singletonMap("action", SetupPointAction.ARENA_WAITING_SPAWN.getDisplayName()));
+            return true;
+        }
+
+        arena.setWaitingSpawn(spawnAboveBlock(player, clickedBlock));
         plugin.getArenaManager().saveArena(arena);
         refreshArenaSetupVisuals(arena);
+        prepareSetupMenuInventory(player);
         plugin.getMessageManager().send(player, "setup.waiting-spawn-saved");
         unlockMenuIfReady(player, session, arena);
         return true;
@@ -262,10 +270,12 @@ public class SetupManager {
             boolean editingFromMenu = session.getPendingRegionAction() == SetupRegionAction.WAITING_AREA;
             session.clearPendingActions();
             if (editingFromMenu) {
+                prepareSetupMenuInventory(player);
                 plugin.getMessageManager().send(player, "setup.selection-complete", Collections.singletonMap("action", action.getDisplayName()));
                 unlockMenuIfReady(player, session, arena);
                 plugin.getMenuManager().openSetupMainMenu(player, arena);
             } else {
+                prepareSetupMenuInventory(player);
                 plugin.getMessageManager().send(player, "setup.waiting-area-complete");
                 unlockMenuIfReady(player, session, arena);
             }
@@ -288,6 +298,7 @@ public class SetupManager {
         plugin.getArenaManager().saveArena(arena);
         refreshArenaSetupVisuals(arena);
         session.clearPendingActions();
+        prepareSetupMenuInventory(player);
         plugin.getMessageManager().send(player, "setup.selection-complete", Collections.singletonMap("action", action.getDisplayName()));
         sendTeamChangedMessage(player, team, wasConfirmed);
         plugin.getMenuManager().openTeamSetupMenu(player, arena, team.getColor());
@@ -307,14 +318,16 @@ public class SetupManager {
 
         SetupPointAction action = session.getPendingPointAction();
         if (action.isBlockRequired() && clickedBlock == null) {
+            sendPointSelectionHint(player, action);
             return true;
         }
 
         if (action == SetupPointAction.ARENA_WAITING_SPAWN) {
-            arena.setWaitingSpawn(player.getLocation());
+            arena.setWaitingSpawn(spawnAboveBlock(player, clickedBlock));
             plugin.getArenaManager().saveArena(arena);
             refreshArenaSetupVisuals(arena);
             session.clearPendingActions();
+            prepareSetupMenuInventory(player);
             plugin.getMessageManager().send(player, "setup.point-saved", Collections.singletonMap("action", action.getDisplayName()));
             unlockMenuIfReady(player, session, arena);
             if (session.isUnlockedMainMenu()) {
@@ -323,11 +336,23 @@ public class SetupManager {
             return true;
         }
 
+        if (action == SetupPointAction.ARENA_ANTI_VOID) {
+            arena.setAntiVoidY(Double.valueOf(player.getLocation().getY()));
+            plugin.getArenaManager().saveArena(arena);
+            refreshArenaSetupVisuals(arena);
+            session.clearPendingActions();
+            prepareSetupMenuInventory(player);
+            plugin.getMessageManager().send(player, "setup.point-saved", Collections.singletonMap("action", action.getDisplayName()));
+            plugin.getMenuManager().openSetupMainMenu(player, arena);
+            return true;
+        }
+
         if (action == SetupPointAction.ARENA_DIAMOND_GENERATOR) {
             arena.addGlobalGenerator(GeneratorType.DIAMOND, LocationUtil.generatorDropLocation(clickedBlock.getLocation()));
             plugin.getArenaManager().saveArena(arena);
             refreshArenaSetupVisuals(arena);
             session.clearPendingActions();
+            prepareSetupMenuInventory(player);
             plugin.getMessageManager().send(player, "setup.point-saved", Collections.singletonMap("action", action.getDisplayName()));
             plugin.getMenuManager().openSetupMainMenu(player, arena);
             return true;
@@ -338,6 +363,7 @@ public class SetupManager {
             plugin.getArenaManager().saveArena(arena);
             refreshArenaSetupVisuals(arena);
             session.clearPendingActions();
+            prepareSetupMenuInventory(player);
             plugin.getMessageManager().send(player, "setup.point-saved", Collections.singletonMap("action", action.getDisplayName()));
             plugin.getMenuManager().openSetupMainMenu(player, arena);
             return true;
@@ -354,7 +380,7 @@ public class SetupManager {
 
         boolean wasConfirmed = team.isConfirmed();
         if (action == SetupPointAction.TEAM_SPAWN) {
-            team.setSpawnLocation(player.getLocation());
+            team.setSpawnLocation(spawnAboveBlock(player, clickedBlock));
         } else if (action == SetupPointAction.TEAM_BED) {
             BedData bedData = clickedBlock == null ? null : BedUtil.resolveBedData(clickedBlock);
             if (bedData == null) {
@@ -388,6 +414,7 @@ public class SetupManager {
         plugin.getArenaManager().saveArena(arena);
         refreshArenaSetupVisuals(arena);
         session.clearPendingActions();
+        prepareSetupMenuInventory(player);
         plugin.getMessageManager().send(player, "setup.point-saved", Collections.singletonMap("action", action.getDisplayName()));
         if (action == SetupPointAction.TEAM_ITEM_SHOP || action == SetupPointAction.TEAM_UPGRADE_SHOP) {
             plugin.getNpcManager().refreshArenaShopNpcs(arena);
@@ -420,9 +447,18 @@ public class SetupManager {
         }
 
         Arena arena = plugin.getArenaManager().getConfiguredArena(session.getArenaName());
-        if (arena != null && session.isUnlockedMainMenu()) {
+        if (arena != null) {
             plugin.getMenuManager().openSetupMainMenu(player, arena);
         }
+    }
+
+    public void prepareSetupMenuInventory(Player player) {
+        if (player == null || !isInSetup(player)) {
+            return;
+        }
+
+        clearPrimarySetupItems(player);
+        giveMenuItem(player);
     }
 
     public boolean canEditNpc(Player player, Arena arena) {
@@ -472,6 +508,9 @@ public class SetupManager {
         boolean changed = false;
         if (action == SetupPointAction.ARENA_WAITING_SPAWN && arena.getWaitingSpawn() != null) {
             arena.setWaitingSpawn(null);
+            changed = true;
+        } else if (action == SetupPointAction.ARENA_ANTI_VOID && arena.hasAntiVoidY()) {
+            arena.setAntiVoidY(null);
             changed = true;
         } else if (action == SetupPointAction.ARENA_DIAMOND_GENERATOR && !arena.getGlobalGenerators(GeneratorType.DIAMOND).isEmpty()) {
             arena.clearGlobalGenerators(GeneratorType.DIAMOND);
@@ -621,6 +660,7 @@ public class SetupManager {
         Map<String, NpcHologram> markers = new LinkedHashMap<String, NpcHologram>();
         addPointMarker(markers, "waiting-spawn", arena.getWaitingSpawn(), "&bSpawn de espera");
         addRegionMarkers(markers, "waiting-area", arena.getWaitingRegion(), "&eSala de espera");
+        addPointMarker(markers, "anti-void", resolveAntiVoidMarkerLocation(arena), "&cAnti-void Y: &f" + formatY(arena.getAntiVoidY()));
 
         for (TeamColor color : plugin.getTeamManager().getActiveColors()) {
             ArenaTeam team = arena.getTeam(color);
@@ -680,35 +720,8 @@ public class SetupManager {
     }
 
     private void giveItems(Player player, SetupSession session, Arena arena) {
-        player.getInventory().setItem(0, new ItemBuilder(Material.NETHER_STAR)
-            .name("&bSalvar spawn de espera")
-            .lore(
-                "&7Clique com botao direito",
-                "&7para salvar o spawn de espera"
-            ).build());
-        player.getInventory().setItem(1, new ItemBuilder(Material.SLIME_BALL)
-            .name("&a/pos1")
-            .lore(
-                "&7Va ate o comeco da area",
-                "&7e clique com botao direito",
-                "&7para marcar a primeira",
-                "&7posicao nos seus pes."
-            ).build());
-        player.getInventory().setItem(2, new ItemBuilder(Material.MAGMA_CREAM)
-            .name("&c/pos2")
-            .lore(
-                "&7Va ate o final da area",
-                "&7e clique com botao direito",
-                "&7para marcar a segunda",
-                "&7posicao nos seus pes."
-            ).build());
-
-        if (session.isUnlockedMainMenu() || hasWaitingSetup(arena)) {
-            session.setUnlockedMainMenu(true);
-            giveMenuItem(player);
-        }
-
-        player.updateInventory();
+        session.setUnlockedMainMenu(true);
+        prepareSetupMenuInventory(player);
     }
 
     private void giveMenuItem(Player player) {
@@ -787,6 +800,79 @@ public class SetupManager {
         return clickedBlock != null && (clickedBlock.getType() == Material.CHEST || clickedBlock.getType() == Material.TRAPPED_CHEST);
     }
 
+    private void sendPointSelectionHint(Player player, SetupPointAction action) {
+        if (player == null || action == null) {
+            return;
+        }
+
+        String message = isSpawnAction(action) ? "setup.select-spawn-block" : "setup.select-block";
+        plugin.getMessageManager().send(player, message, Collections.singletonMap("action", action.getDisplayName()));
+    }
+
+    private boolean isSpawnAction(SetupPointAction action) {
+        return action == SetupPointAction.ARENA_WAITING_SPAWN || action == SetupPointAction.TEAM_SPAWN;
+    }
+
+    private void preparePointActionInventory(Player player, SetupPointAction action) {
+        prepareSetupMenuInventory(player);
+        if (action == SetupPointAction.ARENA_WAITING_SPAWN) {
+            giveWaitingSpawnTool(player);
+        }
+    }
+
+    private void giveWaitingSpawnTool(Player player) {
+        player.getInventory().setItem(0, new ItemBuilder(Material.NETHER_STAR)
+            .name("&bSalvar spawn de espera")
+            .lore(
+                "&7Clique no bloco que sera",
+                "&7a base do spawn de espera.",
+                "&7O spawn sera salvo",
+                "&7em cima desse bloco."
+            ).build());
+        player.updateInventory();
+    }
+
+    private void giveRegionTools(Player player) {
+        prepareSetupMenuInventory(player);
+        player.getInventory().setItem(1, new ItemBuilder(Material.SLIME_BALL)
+            .name("&a/pos1")
+            .lore(
+                "&7Serve para marcar o",
+                "&7primeiro canto de uma",
+                "&7regiao como sala,",
+                "&7ilha ou protecao."
+            ).build());
+        player.getInventory().setItem(2, new ItemBuilder(Material.MAGMA_CREAM)
+            .name("&c/pos2")
+            .lore(
+                "&7Serve para marcar o",
+                "&7segundo canto da",
+                "&7regiao quando o setup",
+                "&7pedir /pos1 e /pos2."
+            ).build());
+        player.updateInventory();
+    }
+
+    private void clearPrimarySetupItems(Player player) {
+        for (int slot = 0; slot < player.getInventory().getSize(); slot++) {
+            ItemStack itemStack = player.getInventory().getItem(slot);
+            if (isWaitingSpawnItem(itemStack) || isPositionOneItem(itemStack) || isPositionTwoItem(itemStack)) {
+                player.getInventory().setItem(slot, null);
+            }
+        }
+        player.updateInventory();
+    }
+
+    private Location spawnAboveBlock(Player player, Block clickedBlock) {
+        Location spawnLocation = LocationUtil.topCenter(clickedBlock.getLocation());
+        if (player != null) {
+            Location playerLocation = player.getLocation();
+            spawnLocation.setYaw(playerLocation.getYaw());
+            spawnLocation.setPitch(playerLocation.getPitch());
+        }
+        return spawnLocation;
+    }
+
     private boolean hasActiveViewer(String arenaName) {
         if (arenaName == null) {
             return false;
@@ -860,5 +946,30 @@ public class SetupManager {
         stand.setBasePlate(false);
         stand.setArms(false);
         return stand;
+    }
+
+    private Location resolveAntiVoidMarkerLocation(Arena arena) {
+        if (arena == null || !arena.hasAntiVoidY()) {
+            return null;
+        }
+
+        Location waitingSpawn = arena.getWaitingSpawn();
+        if (waitingSpawn == null || waitingSpawn.getWorld() == null) {
+            return null;
+        }
+
+        return waitingSpawn;
+    }
+
+    private String formatY(Double value) {
+        if (value == null) {
+            return "Pendente";
+        }
+
+        double rounded = Math.rint(value.doubleValue());
+        if (Math.abs(value.doubleValue() - rounded) < 0.001D) {
+            return String.valueOf((int) rounded);
+        }
+        return String.format(java.util.Locale.US, "%.1f", value.doubleValue());
     }
 }

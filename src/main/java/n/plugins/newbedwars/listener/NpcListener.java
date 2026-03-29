@@ -7,6 +7,7 @@ import n.plugins.newbedwars.NewBedWars;
 import n.plugins.newbedwars.arena.Arena;
 import n.plugins.newbedwars.arena.TeamColor;
 import n.plugins.newbedwars.npc.BedWarsNpcType;
+import n.plugins.newbedwars.util.SoundUtil;
 import net.citizensnpcs.api.CitizensAPI;
 import net.citizensnpcs.api.event.NPCRemoveEvent;
 import net.citizensnpcs.api.event.NPCRightClickEvent;
@@ -114,6 +115,7 @@ public class NpcListener implements Listener {
             openMenuNextTick(player, new Runnable() {
                 @Override
                 public void run() {
+                    SoundUtil.playConfigured(plugin, player, "sound-effects.npc-open", "CLICK", 1.0F, 1.2F);
                     plugin.getMenuManager().openSoloQueueMenu(player);
                 }
             });
@@ -124,6 +126,7 @@ public class NpcListener implements Listener {
             openMenuNextTick(player, new Runnable() {
                 @Override
                 public void run() {
+                    SoundUtil.playConfigured(plugin, player, "sound-effects.shop-open", "CLICK", 1.0F, 1.2F);
                     plugin.getMenuManager().openItemShop(player);
                 }
             });
@@ -134,6 +137,7 @@ public class NpcListener implements Listener {
             openMenuNextTick(player, new Runnable() {
                 @Override
                 public void run() {
+                    SoundUtil.playConfigured(plugin, player, "sound-effects.shop-open", "CLICK", 1.0F, 1.2F);
                     plugin.getMenuManager().openUpgradeShop(player);
                 }
             });

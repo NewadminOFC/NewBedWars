@@ -2,17 +2,38 @@ settings:
   min-players: 2
   max-players: 2
   countdown-seconds: 10
-  ending-seconds: 8
-  respawn-seconds: 1
+  ending-seconds: 30
+  respawn-seconds: 5
+  start-countdown-chat: true
+  respawn-countdown-chat: false
   clear-inventories-on-join: true
   sounds: true
-  titles: false
+  titles: true
   holograms: false
   setup-holograms: true
   team-chest-holograms: true
+  ender-chest-holograms: true
   spectators-can-fly: true
+  arena-always-day: true
+  arena-clear-weather: true
 
 lobby: {}
+
+anti-void: true
+
+PvP-Manager: true
+
+pvp-manager:
+  cancel-friendly-fire: true
+  maximum-no-damage-ticks: 12
+  reset-sprint-on-hit: true
+  preserve-higher-y: true
+  horizontal: 0.39
+  vertical: 0.34
+  sprint-extra-horizontal: 0.10
+  sprint-extra-vertical: 0.02
+  max-horizontal: 0.90
+  max-vertical: 0.42
 
 events:
   diamond-tier-seconds: 300
@@ -42,6 +63,1126 @@ npc:
 team-chest-hologram:
   top: "&6&lBAU"
   bottom: "&eClique para guardar"
+
+ender-chest-hologram:
+  top: "&5&lENDER"
+  bottom: "&eClique para abrir"
+
+sound-effects:
+  npc-open:
+    sound: "CLICK"
+    volume: 1.0
+    pitch: 1.2
+  shop-open:
+    sound: "CLICK"
+    volume: 1.0
+    pitch: 1.2
+  shop-buy-success:
+    sound: "ORB_PICKUP"
+    volume: 1.0
+    pitch: 1.2
+  shop-buy-fail:
+    sound: "VILLAGER_NO"
+    volume: 1.0
+    pitch: 1.0
+  team-chest-open:
+    sound: "CHEST_OPEN"
+    volume: 1.0
+    pitch: 1.0
+  team-chest-store:
+    sound: "CHEST_OPEN"
+    volume: 1.0
+    pitch: 1.2
+  ender-chest-open:
+    sound: "ENDERCHEST_OPEN"
+    volume: 1.0
+    pitch: 1.0
+  ender-chest-store:
+    sound: "ENDERCHEST_OPEN"
+    volume: 1.0
+    pitch: 1.2
+  countdown:
+    sound: "NOTE_PLING"
+    volume: 1.0
+    pitch: 1.5
+  game-start:
+    sound: "ENDERDRAGON_GROWL"
+    volume: 0.7
+    pitch: 1.2
+  bed-destroyed:
+    sound: "ENDERDRAGON_GROWL"
+    volume: 0.8
+    pitch: 1.1
+  own-bed-destroyed:
+    sound: "WITHER_DEATH"
+    volume: 1.0
+    pitch: 1.0
+  bed-break:
+    sound: "ANVIL_USE"
+    volume: 1.0
+    pitch: 1.1
+  respawn:
+    sound: "LEVEL_UP"
+    volume: 1.0
+    pitch: 1.1
+  final-death:
+    sound: "WITHER_DEATH"
+    volume: 1.0
+    pitch: 1.0
+  victory:
+    sound: "LEVEL_UP"
+    volume: 1.0
+    pitch: 1.1
+  defeat:
+    sound: "WITHER_DEATH"
+    volume: 0.7
+    pitch: 1.0
+  draw:
+    sound: "NOTE_PLING"
+    volume: 1.0
+    pitch: 1.0
+
+currencies:
+  iron_ingot:
+    singular: "ferro"
+    plural: "ferros"
+    color: "&f"
+  gold_ingot:
+    singular: "ouro"
+    plural: "ouros"
+    color: "&6"
+  diamond:
+    singular: "diamante"
+    plural: "diamantes"
+    color: "&b"
+  emerald:
+    singular: "esmeralda"
+    plural: "esmeraldas"
+    color: "&a"
+
+item-shop:
+  default-category: "quick-buy"
+  size: 54
+  offer-display-slots: [19, 20, 21, 22, 23, 24, 25, 28, 29, 30, 31, 32, 33, 34, 37, 38, 39, 40, 41, 42, 43]
+  texts:
+    buy: "&eClique para comprar"
+    maxed: "&aMaximo"
+  background:
+    enabled: false
+    material: "STAINED_GLASS_PANE"
+    data: 15
+    name: "&8 "
+  category-panels:
+    enabled: true
+    row-offset: 9
+    default:
+      material: "STAINED_GLASS_PANE"
+      data: 7
+      name: "&8 "
+      glow: false
+    selected:
+      material: "STAINED_GLASS_PANE"
+      data: 5
+      name: "&a "
+      glow: true
+  info:
+    slot: -1
+    material: "EMERALD"
+    name: "&bCategoria: %category%"
+    lore:
+      - "&7Seu time: %team%"
+      - "&7Use as categorias para"
+      - "&7trocar de catalogo."
+  close:
+    slot: -1
+    material: "BARRIER"
+    name: "&cFechar"
+  categories:
+    quick-buy:
+      slot: 1
+      material: "NETHER_STAR"
+      name: "&eCompra Rapida"
+      lore:
+        - "&7Itens favoritos para"
+        - "&7comprar sem perder tempo."
+      glow: true
+    blocks:
+      slot: 2
+      material: "WOOL"
+      name: "&aBlocos"
+      lore:
+        - "&7Blocos para rush,"
+        - "&7defesa e ponte."
+    combat:
+      slot: 3
+      material: "IRON_CHESTPLATE"
+      name: "&cCombate"
+      display-slots: [19, 20, 21, 23, 24, 25, 28, 29, 30, 31, 32, 33]
+      lore:
+        - "&7Espadas, armaduras e"
+        - "&7itens de luta direta."
+    tools:
+      slot: 4
+      material: "IRON_PICKAXE"
+      name: "&6Ferramentas"
+      lore:
+        - "&7Ferramentas para"
+        - "&7quebrar defesas."
+    ranged:
+      slot: 5
+      material: "BOW"
+      name: "&dDistancia"
+      lore:
+        - "&7Arco e flechas para"
+        - "&7pressionar de longe."
+    potions:
+      slot: 6
+      material: "POTION"
+      data: 8194
+      name: "&5Pocoes"
+      lore:
+        - "&7Buffs curtos para"
+        - "&7entradas e clutch."
+    utility:
+      slot: 7
+      material: "WATCH"
+      name: "&eUtilidades"
+      lore:
+        - "&7Itens especiais para"
+        - "&7abrir caminho."
+  items:
+    wool:
+      category: "blocks"
+      quick-buy: true
+      slot: 19
+      action: "item"
+      name: "&fLa"
+      description: "16 blocos na cor do time"
+      icon:
+        material: "WOOL"
+        amount: 16
+        team-color-data: true
+      lore:
+        - "&7Perfeito para rush rapido."
+        - ""
+        - "&7Custo: %cost_color%%cost_amount% %cost_name%"
+        - ""
+        - "&eClique para comprar"
+      cost:
+        material: "IRON_INGOT"
+        amount: 4
+      reward:
+        material: "WOOL"
+        amount: 16
+        team-color-data: true
+    clay:
+      category: "blocks"
+      quick-buy: false
+      slot: 20
+      action: "item"
+      name: "&6Argila Endurecida"
+      description: "16 blocos resistentes"
+      icon:
+        material: "STAINED_CLAY"
+        amount: 16
+        team-color-data: true
+      lore:
+        - "&7Boa defesa contra TNT."
+        - ""
+        - "&7Custo: %cost_color%%cost_amount% %cost_name%"
+        - ""
+        - "&eClique para comprar"
+      cost:
+        material: "IRON_INGOT"
+        amount: 12
+      reward:
+        material: "STAINED_CLAY"
+        amount: 16
+        team-color-data: true
+    blast-proof-glass:
+      category: "blocks"
+      quick-buy: false
+      slot: 22
+      action: "item"
+      name: "&bVidro Anti-Explosao"
+      description: "4 vidros protegidos contra TNT e fireball"
+      icon:
+        material: "STAINED_GLASS"
+        amount: 4
+        data: 0
+      lore:
+        - "&7Segura explosoes sem abrir buraco."
+        - ""
+        - "&7Custo: %cost_color%%cost_amount% %cost_name%"
+        - ""
+        - "&eClique para comprar"
+      cost:
+        material: "IRON_INGOT"
+        amount: 12
+      reward:
+        material: "STAINED_GLASS"
+        amount: 4
+        data: 0
+    wood:
+      category: "blocks"
+      quick-buy: false
+      slot: 21
+      action: "item"
+      name: "&6Madeira"
+      description: "16 tabuas para defesa"
+      icon:
+        material: "WOOD"
+        amount: 16
+      lore:
+        - "&7Barata e eficiente contra"
+        - "&7picaretas fracas."
+        - ""
+        - "&7Custo: %cost_color%%cost_amount% %cost_name%"
+        - ""
+        - "&eClique para comprar"
+      cost:
+        material: "GOLD_INGOT"
+        amount: 4
+      reward:
+        material: "WOOD"
+        amount: 16
+    endstone:
+      category: "blocks"
+      quick-buy: true
+      slot: 23
+      action: "item"
+      name: "&eEnd Stone"
+      description: "12 blocos resistentes"
+      icon:
+        material: "ENDER_STONE"
+        amount: 12
+      lore:
+        - "&7Defesa forte para a cama."
+        - ""
+        - "&7Custo: %cost_color%%cost_amount% %cost_name%"
+        - ""
+        - "&eClique para comprar"
+      cost:
+        material: "IRON_INGOT"
+        amount: 24
+      reward:
+        material: "ENDER_STONE"
+        amount: 12
+    obsidian:
+      category: "blocks"
+      quick-buy: false
+      slot: 24
+      action: "item"
+      name: "&5Obsidian"
+      description: "4 blocos muito fortes"
+      icon:
+        material: "OBSIDIAN"
+        amount: 4
+      lore:
+        - "&7Defesa premium."
+        - ""
+        - "&7Custo: %cost_color%%cost_amount% %cost_name%"
+        - ""
+        - "&eClique para comprar"
+      cost:
+        material: "EMERALD"
+        amount: 4
+      reward:
+        material: "OBSIDIAN"
+        amount: 4
+    stone-sword:
+      category: "combat"
+      quick-buy: true
+      slot: 28
+      action: "sword"
+      name: "&7Espada de Pedra"
+      description: "Upgrade de espada"
+      icon:
+        material: "STONE_SWORD"
+      lore:
+        - "&7Melhora sua espada."
+        - ""
+        - "&7Custo: %cost_color%%cost_amount% %cost_name%"
+        - ""
+        - "&eClique para comprar"
+      cost:
+        material: "IRON_INGOT"
+        amount: 10
+      reward:
+        material: "STONE_SWORD"
+    iron-sword:
+      category: "combat"
+      quick-buy: false
+      slot: 29
+      action: "sword"
+      name: "&fEspada de Ferro"
+      description: "Dano forte e constante"
+      icon:
+        material: "IRON_SWORD"
+      lore:
+        - "&7Para duelos mais pesados."
+        - ""
+        - "&7Custo: %cost_color%%cost_amount% %cost_name%"
+        - ""
+        - "&eClique para comprar"
+      cost:
+        material: "GOLD_INGOT"
+        amount: 7
+      reward:
+        material: "IRON_SWORD"
+    diamond-sword:
+      category: "combat"
+      quick-buy: false
+      slot: 30
+      action: "sword"
+      name: "&bEspada de Diamante"
+      description: "Espada final"
+      icon:
+        material: "DIAMOND_SWORD"
+      lore:
+        - "&7A melhor espada da loja."
+        - ""
+        - "&7Custo: %cost_color%%cost_amount% %cost_name%"
+        - ""
+        - "&eClique para comprar"
+      cost:
+        material: "EMERALD"
+        amount: 4
+      reward:
+        material: "DIAMOND_SWORD"
+    bow:
+      category: "ranged"
+      quick-buy: true
+      slot: 31
+      action: "item"
+      name: "&6Arco"
+      description: "Pressione inimigos de longe"
+      icon:
+        material: "BOW"
+      lore:
+        - "&7Abre espaco e controla ponte."
+        - ""
+        - "&7Custo: %cost_color%%cost_amount% %cost_name%"
+        - ""
+        - "&eClique para comprar"
+      cost:
+        material: "GOLD_INGOT"
+        amount: 12
+      reward:
+        material: "BOW"
+        amount: 1
+    power-bow:
+      category: "ranged"
+      quick-buy: false
+      slot: 32
+      action: "item"
+      name: "&dArco Reforcado"
+      description: "Arco com Power I"
+      icon:
+        material: "BOW"
+        glow: true
+      lore:
+        - "&7Mais dano para punir pontes e troca."
+        - ""
+        - "&7Custo: %cost_color%%cost_amount% %cost_name%"
+        - ""
+        - "&eClique para comprar"
+      cost:
+        material: "GOLD_INGOT"
+        amount: 24
+      reward:
+        material: "BOW"
+        amount: 1
+        enchantments:
+          ARROW_DAMAGE: 1
+    punch-bow:
+      category: "ranged"
+      quick-buy: false
+      slot: 33
+      action: "item"
+      name: "&5Arco de Recuo"
+      description: "Arco com Punch I"
+      icon:
+        material: "BOW"
+        glow: true
+      lore:
+        - "&7Perfeito para jogar inimigos no void."
+        - ""
+        - "&7Custo: %cost_color%%cost_amount% %cost_name%"
+        - ""
+        - "&eClique para comprar"
+      cost:
+        material: "EMERALD"
+        amount: 6
+      reward:
+        material: "BOW"
+        amount: 1
+        enchantments:
+          ARROW_KNOCKBACK: 1
+    arrows:
+      category: "ranged"
+      quick-buy: false
+      slot: 34
+      action: "item"
+      name: "&fFlechas"
+      description: "Pacote com 8 flechas"
+      icon:
+        material: "ARROW"
+        amount: 8
+      lore:
+        - "&7Mantenha o arco sempre pronto."
+        - ""
+        - "&7Custo: %cost_color%%cost_amount% %cost_name%"
+        - ""
+        - "&eClique para comprar"
+      cost:
+        material: "GOLD_INGOT"
+        amount: 2
+      reward:
+        material: "ARROW"
+        amount: 8
+    chainmail-armor:
+      category: "combat"
+      quick-buy: true
+      slot: 38
+      action: "armor"
+      name: "&fArmadura de Cota"
+      description: "Primeiro upgrade de armadura"
+      icon:
+        material: "CHAINMAIL_BOOTS"
+      lore:
+        - "&7Upgrade permanente."
+        - ""
+        - "&7Custo: %cost_color%%cost_amount% %cost_name%"
+        - ""
+        - "&eClique para comprar"
+      cost:
+        material: "IRON_INGOT"
+        amount: 40
+      reward:
+        armor-tier: 1
+    iron-armor:
+      category: "combat"
+      quick-buy: false
+      slot: 39
+      action: "armor"
+      name: "&fArmadura de Ferro"
+      description: "Segundo upgrade de armadura"
+      icon:
+        material: "IRON_BOOTS"
+      lore:
+        - "&7Mais resistente no mid game."
+        - ""
+        - "&7Custo: %cost_color%%cost_amount% %cost_name%"
+        - ""
+        - "&eClique para comprar"
+      cost:
+        material: "GOLD_INGOT"
+        amount: 12
+      reward:
+        armor-tier: 2
+    diamond-armor:
+      category: "combat"
+      quick-buy: false
+      slot: 40
+      action: "armor"
+      name: "&bArmadura de Diamante"
+      description: "Ultimo upgrade de armadura"
+      icon:
+        material: "DIAMOND_BOOTS"
+      lore:
+        - "&7Armadura final da partida."
+        - ""
+        - "&7Custo: %cost_color%%cost_amount% %cost_name%"
+        - ""
+        - "&eClique para comprar"
+      cost:
+        material: "EMERALD"
+        amount: 6
+      reward:
+        armor-tier: 3
+    shears:
+      category: "tools"
+      quick-buy: false
+      slot: 40
+      action: "item"
+      name: "&fTesoura"
+      description: "Quebre la e folhas mais rapido"
+      icon:
+        material: "SHEARS"
+      lore:
+        - "&7Ferramenta pratica para rush."
+        - ""
+        - "&7Custo: %cost_color%%cost_amount% %cost_name%"
+        - ""
+        - "&eClique para comprar"
+      cost:
+        material: "IRON_INGOT"
+        amount: 20
+      reward:
+        material: "SHEARS"
+        amount: 1
+    pickaxe:
+      category: "tools"
+      quick-buy: true
+      slot: 41
+      action: "pickaxe"
+      tiers:
+        "1":
+          name: "&6Picareta de Madeira"
+          description: "Primeira ferramenta permanente"
+          icon:
+            material: "WOOD_PICKAXE"
+          lore:
+            - "&7Comece a evolucao da sua picareta."
+            - ""
+            - "&7Custo: %cost_display%"
+            - ""
+            - "%status%"
+          cost:
+            material: "IRON_INGOT"
+            amount: 10
+          reward:
+            material: "WOOD_PICKAXE"
+            amount: 1
+        "2":
+          name: "&7Picareta de Pedra"
+          description: "Segundo nivel da ferramenta"
+          icon:
+            material: "STONE_PICKAXE"
+          lore:
+            - "&7Melhor para defesas medias."
+            - ""
+            - "&7Custo: %cost_display%"
+            - ""
+            - "%status%"
+          cost:
+            material: "IRON_INGOT"
+            amount: 20
+          reward:
+            material: "STONE_PICKAXE"
+            amount: 1
+        "3":
+          name: "&6Picareta de Ouro"
+          description: "Nivel rapido para quebrar blocos"
+          icon:
+            material: "GOLD_PICKAXE"
+          lore:
+            - "&7Ataque rapido em defesas leves."
+            - ""
+            - "&7Custo: %cost_display%"
+            - ""
+            - "%status%"
+          cost:
+            material: "GOLD_INGOT"
+            amount: 6
+          reward:
+            material: "GOLD_PICKAXE"
+            amount: 1
+        "4":
+          name: "&fPicareta de Ferro"
+          description: "Nivel forte para invadir"
+          icon:
+            material: "IRON_PICKAXE"
+          lore:
+            - "&7Boa contra end stone e vidro forte."
+            - ""
+            - "&7Custo: %cost_display%"
+            - ""
+            - "%status%"
+          cost:
+            material: "GOLD_INGOT"
+            amount: 8
+          reward:
+            material: "IRON_PICKAXE"
+            amount: 1
+        "5":
+          name: "&bPicareta de Diamante"
+          description: "Nivel maximo da ferramenta"
+          icon:
+            material: "DIAMOND_PICKAXE"
+            glow: true
+          lore:
+            - "&7Sua melhor picareta da partida."
+            - ""
+            - "&7Custo: %cost_display%"
+            - ""
+            - "%status%"
+          cost:
+            material: "GOLD_INGOT"
+            amount: 12
+          reward:
+            material: "DIAMOND_PICKAXE"
+            amount: 1
+    axe:
+      category: "tools"
+      quick-buy: false
+      slot: 42
+      action: "axe"
+      tiers:
+        "1":
+          name: "&6Machado de Madeira"
+          description: "Primeiro machado permanente"
+          icon:
+            material: "WOOD_AXE"
+          lore:
+            - "&7Comece a evolucao do seu machado."
+            - ""
+            - "&7Custo: %cost_display%"
+            - ""
+            - "%status%"
+          cost:
+            material: "IRON_INGOT"
+            amount: 10
+          reward:
+            material: "WOOD_AXE"
+            amount: 1
+        "2":
+          name: "&7Machado de Pedra"
+          description: "Segundo nivel do machado"
+          icon:
+            material: "STONE_AXE"
+          lore:
+            - "&7Melhor para portas e madeira."
+            - ""
+            - "&7Custo: %cost_display%"
+            - ""
+            - "%status%"
+          cost:
+            material: "IRON_INGOT"
+            amount: 20
+          reward:
+            material: "STONE_AXE"
+            amount: 1
+        "3":
+          name: "&6Machado de Ouro"
+          description: "Machado rapido para rush"
+          icon:
+            material: "GOLD_AXE"
+          lore:
+            - "&7Abre defesa de madeira bem rapido."
+            - ""
+            - "&7Custo: %cost_display%"
+            - ""
+            - "%status%"
+          cost:
+            material: "GOLD_INGOT"
+            amount: 6
+          reward:
+            material: "GOLD_AXE"
+            amount: 1
+        "4":
+          name: "&fMachado de Ferro"
+          description: "Nivel forte para invadir"
+          icon:
+            material: "IRON_AXE"
+          lore:
+            - "&7Ideal contra defesas de madeira."
+            - ""
+            - "&7Custo: %cost_display%"
+            - ""
+            - "%status%"
+          cost:
+            material: "GOLD_INGOT"
+            amount: 8
+          reward:
+            material: "IRON_AXE"
+            amount: 1
+        "5":
+          name: "&bMachado de Diamante"
+          description: "Nivel maximo do machado"
+          icon:
+            material: "DIAMOND_AXE"
+            glow: true
+          lore:
+            - "&7Seu melhor machado da partida."
+            - ""
+            - "&7Custo: %cost_display%"
+            - ""
+            - "%status%"
+          cost:
+            material: "GOLD_INGOT"
+            amount: 12
+          reward:
+            material: "DIAMOND_AXE"
+            amount: 1
+    potion-speed:
+      category: "potions"
+      quick-buy: false
+      slot: 19
+      action: "item"
+      name: "&cPocao de Agilidade II (45 segundos)"
+      description: "Velocidade II por 45 segundos"
+      icon:
+        material: "POTION"
+        data: 8194
+      lore:
+        - "&7Entre rapido na base inimiga."
+        - ""
+        - "&7Custo: %cost_color%%cost_amount% %cost_name%"
+        - ""
+        - "&eClique para comprar"
+      cost:
+        material: "EMERALD"
+        amount: 1
+      reward:
+        material: "POTION"
+        data: 8194
+        name: "&cPocao de Agilidade II (45 segundos)"
+        special-use: "custom-potion"
+        effect-type: "SPEED"
+        duration-seconds: 45
+        amplifier: 1
+    potion-jump:
+      category: "potions"
+      quick-buy: false
+      slot: 20
+      action: "item"
+      name: "&cPocao de Super Pulo V (45 segundos)"
+      description: "Super pulo V por 45 segundos"
+      icon:
+        material: "POTION"
+        data: 8203
+      lore:
+        - "&7Passe por defesas e paredes."
+        - ""
+        - "&7Custo: %cost_color%%cost_amount% %cost_name%"
+        - ""
+        - "&eClique para comprar"
+      cost:
+        material: "EMERALD"
+        amount: 1
+      reward:
+        material: "POTION"
+        data: 8203
+        name: "&cPocao de Super Pulo V (45 segundos)"
+        special-use: "custom-potion"
+        effect-type: "JUMP"
+        duration-seconds: 45
+        amplifier: 4
+    potion-invisibility:
+      category: "potions"
+      quick-buy: false
+      slot: 21
+      action: "item"
+      name: "&cPocao de Invisibilidade (30 segundos)"
+      description: "Invisibilidade por 30 segundos"
+      icon:
+        material: "POTION"
+        data: 8238
+      lore:
+        - "&7Perfeita para invadir sem ser visto."
+        - ""
+        - "&7Custo: %cost_color%%cost_amount% %cost_name%"
+        - ""
+        - "&eClique para comprar"
+      cost:
+        material: "EMERALD"
+        amount: 2
+      reward:
+        material: "POTION"
+        data: 8238
+        name: "&cPocao de Invisibilidade (30 segundos)"
+        special-use: "custom-potion"
+        effect-type: "INVISIBILITY"
+        duration-seconds: 30
+        amplifier: 0
+    tnt:
+      category: "utility"
+      quick-buy: true
+      slot: 19
+      action: "item"
+      name: "&cTNT"
+      description: "Abra a defesa inimiga"
+      icon:
+        material: "TNT"
+      lore:
+        - "&7Perfeito para ataques rapidos."
+        - ""
+        - "&7Custo: %cost_color%%cost_amount% %cost_name%"
+        - ""
+        - "&eClique para comprar"
+      cost:
+        material: "GOLD_INGOT"
+        amount: 4
+      reward:
+        material: "TNT"
+        amount: 1
+    fireball:
+      category: "utility"
+      quick-buy: true
+      slot: 20
+      action: "item"
+      name: "&6Fireball"
+      description: "Arremesse para explodir e empurrar"
+      icon:
+        material: "FIREBALL"
+      lore:
+        - "&7Ataque e mobilidade em um item."
+        - ""
+        - "&7Custo: %cost_color%%cost_amount% %cost_name%"
+        - ""
+        - "&eClique para comprar"
+      cost:
+        material: "IRON_INGOT"
+        amount: 40
+      reward:
+        material: "FIREBALL"
+        amount: 1
+    golden-apple:
+      category: "utility"
+      quick-buy: true
+      slot: 21
+      action: "item"
+      name: "&6Maca Dourada"
+      description: "Cura rapida para trocas"
+      icon:
+        material: "GOLDEN_APPLE"
+      lore:
+        - "&7Boa para clutch e invasao."
+        - ""
+        - "&7Custo: %cost_color%%cost_amount% %cost_name%"
+        - ""
+        - "&eClique para comprar"
+      cost:
+        material: "GOLD_INGOT"
+        amount: 3
+      reward:
+        material: "GOLDEN_APPLE"
+        amount: 1
+        name: "&6Maca Dourada"
+    ender-pearl:
+      category: "utility"
+      quick-buy: true
+      slot: 22
+      action: "item"
+      name: "&aPerola do Fim"
+      description: "Movimento instantaneo"
+      icon:
+        material: "ENDER_PEARL"
+      lore:
+        - "&7Entre na base inimiga de surpresa."
+        - ""
+        - "&7Custo: %cost_color%%cost_amount% %cost_name%"
+        - ""
+        - "&eClique para comprar"
+      cost:
+        material: "EMERALD"
+        amount: 2
+      reward:
+        material: "ENDER_PEARL"
+        amount: 1
+        name: "&aPerola do Fim"
+    bridge-egg:
+      category: "utility"
+      quick-buy: false
+      slot: 23
+      action: "item"
+      name: "&eOvo das Pontes"
+      description: "Cria uma ponte por onde passar"
+      icon:
+        material: "EGG"
+      lore:
+        - "&7Use este ovo para criar uma ponte."
+        - ""
+        - "&7Custo: %cost_color%%cost_amount% %cost_name%"
+        - ""
+        - "&eClique para comprar"
+      cost:
+        material: "EMERALD"
+        amount: 1
+      reward:
+        material: "EGG"
+        amount: 1
+        name: "&eOvo das Pontes"
+        special-use: "bridge-egg"
+    bug-bomb:
+      category: "utility"
+      quick-buy: false
+      slot: 24
+      action: "item"
+      name: "&6Percevejo"
+      description: "Invoca uma criatura para distrair inimigos"
+      icon:
+        material: "SNOW_BALL"
+      lore:
+        - "&7Invoca uma traca onde a bola cair."
+        - "&7Dura 15 segundos."
+        - ""
+        - "&7Custo: %cost_color%%cost_amount% %cost_name%"
+        - ""
+        - "&eClique para comprar"
+      cost:
+        material: "IRON_INGOT"
+        amount: 24
+      reward:
+        material: "SNOW_BALL"
+        amount: 1
+        name: "&6Percevejo"
+        special-use: "bug-bomb"
+        duration-seconds: 15
+    water-bucket:
+      category: "utility"
+      quick-buy: false
+      slot: 25
+      action: "item"
+      name: "&bBalde de Agua"
+      description: "Atrasa inimigos e protege contra TNT"
+      icon:
+        material: "WATER_BUCKET"
+      lore:
+        - "&7Otimo para segurar rush inimigo."
+        - ""
+        - "&7Custo: %cost_color%%cost_amount% %cost_name%"
+        - ""
+        - "&eClique para comprar"
+      cost:
+        material: "GOLD_INGOT"
+        amount: 3
+      reward:
+        material: "WATER_BUCKET"
+        amount: 1
+        name: "&bBalde de Agua"
+    iron-golem:
+      category: "utility"
+      quick-buy: false
+      slot: 28
+      action: "item"
+      name: "&fGolem de Ferro"
+      description: "Invoca um golem para defender sua base"
+      icon:
+        material: "MONSTER_EGG"
+        data: 99
+      lore:
+        - "&7Invoca um Golem de Ferro para"
+        - "&7proteger sua base. Dura 4 minutos."
+        - ""
+        - "&7Custo: %cost_color%%cost_amount% %cost_name%"
+        - ""
+        - "&eClique para comprar"
+      cost:
+        material: "IRON_INGOT"
+        amount: 90
+      reward:
+        material: "MONSTER_EGG"
+        amount: 1
+        data: 99
+        name: "&fGolem de Ferro"
+        special-use: "iron-golem"
+        duration-seconds: 240
+
+upgrade-shop:
+  size: 27
+  texts:
+    purchased: "&aComprado"
+    maxed: "&aMaximo"
+    click: "&eClique para comprar"
+  background:
+    enabled: false
+    material: "STAINED_GLASS_PANE"
+    data: 15
+    name: "&8 "
+  info:
+    slot: -1
+    material: "DIAMOND"
+    name: "&bMelhorias do Time"
+    lore:
+      - "&7Todos os upgrades desta loja"
+      - "&7sao compartilhados pelo time."
+      - ""
+      - "&7Seu time: %team%"
+  close:
+    slot: -1
+    material: "BARRIER"
+    name: "&cFechar"
+  upgrades:
+    sharpness:
+      action: "sharpness"
+      slot: 11
+      material: "IRON_SWORD"
+      name: "&cEspadas Afiadas"
+      lore:
+        - "&7Nivel atual: &f%level%/%max_level%"
+        - "&7Custo: %cost_display%"
+        - ""
+        - "&7Aumenta o dano das espadas"
+        - "&7de todo o seu time."
+        - ""
+        - "%status%"
+      glow-when-purchased: true
+      cost:
+        material: "DIAMOND"
+        amounts: [4]
+    protection:
+      action: "protection"
+      slot: 12
+      material: "IRON_CHESTPLATE"
+      name: "&bProtecao"
+      lore:
+        - "&7Nivel atual: &f%level%/%max_level%"
+        - "&7Proximo custo: %cost_display%"
+        - ""
+        - "&7Aumenta a protecao da"
+        - "&7armadura do time."
+        - ""
+        - "%status%"
+      glow-when-purchased: true
+      cost:
+        material: "DIAMOND"
+        amounts: [2, 4, 8, 16]
+    maniac-miner:
+      action: "maniac-miner"
+      slot: 14
+      material: "DIAMOND_PICKAXE"
+      name: "&eMinerador Maniaco"
+      lore:
+        - "&7Nivel atual: &f%level%/%max_level%"
+        - "&7Proximo custo: %cost_display%"
+        - ""
+        - "&7Da pressa II e III para"
+        - "&7o seu time."
+        - ""
+        - "%status%"
+      glow-when-purchased: true
+      cost:
+        material: "DIAMOND"
+        amounts: [2, 4]
+    tool-enchant:
+      action: "tool-enchant"
+      slot: 13
+      material: "ENCHANTED_BOOK"
+      name: "&dEncantar Ferramentas"
+      lore:
+        - "&7Nivel atual: &f%level%/%max_level%"
+        - "&7Proximo custo: %cost_display%"
+        - ""
+        - "&7Encanta picaretas e machados"
+        - "&7do seu time para quebrar mais rapido."
+        - ""
+        - "%status%"
+      glow-when-purchased: false
+      cost:
+        material: "DIAMOND"
+        amounts: [2, 4, 6]
+      enchantments:
+        DIG_SPEED: [1, 2, 3]
+    heal-pool:
+      action: "heal-pool"
+      slot: 15
+      material: "BEACON"
+      name: "&aPiscina de Cura"
+      lore:
+        - "&7Nivel atual: &f%level%/%max_level%"
+        - "&7Custo: %cost_display%"
+        - ""
+        - "&7Regeneracao dentro da"
+        - "&7ilha do seu time."
+        - ""
+        - "%status%"
+      glow-when-purchased: true
+      cost:
+        material: "DIAMOND"
+        amounts: [1]
 
 pre-game-items:
   team-selector:
@@ -84,6 +1225,12 @@ generators:
     interval-seconds: 15
     max-nearby-items: 8
 
+special-blocks:
+  blast-proof:
+    enabled: true
+    materials:
+      - "STAINED_GLASS"
+
 special-items:
   fireball:
     speed: 2.75
@@ -98,6 +1245,10 @@ special-items:
     self-horizontal-multiplier: 1.12
     self-vertical-multiplier: 1.08
     max-velocity: 3.95
+    fall-damage-cap:
+      enabled: true
+      minimum-hearts: 5.0
+      duration-ticks: 120
   tnt:
     fuse-ticks: 40
     yield: 4.0
@@ -120,6 +1271,10 @@ special-items:
     chain-max-velocity: 0.95
     timer-enabled: true
     timer-format: "%color%%seconds%s"
+    fall-damage-cap:
+      enabled: true
+      minimum-hearts: 5.0
+      duration-ticks: 120
 
 scoreboard:
   title: "&b&lBEDWARS"

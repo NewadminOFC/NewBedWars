@@ -43,6 +43,7 @@ public class SetupMainMenu extends BaseMenu {
                 "&7Modo: &f1v1",
                 "&7Spawn de espera: " + status(arena.getWaitingSpawn() != null),
                 "&7Area de espera: " + status(arena.getWaitingRegion() != null && arena.getWaitingRegion().isComplete()),
+                "&7Anti-void: " + antiVoidStatus(),
                 "&7Diamante: &f" + arena.getGlobalGenerators(GeneratorType.DIAMOND).size(),
                 "&7Esmeralda: &f" + arena.getGlobalGenerators(GeneratorType.EMERALD).size(),
                 "&7Pronta: " + status(arena.isReady())
@@ -53,6 +54,9 @@ public class SetupMainMenu extends BaseMenu {
             "&cClique direito para limpar"));
         inventory.setItem(12, action(Material.WOOD_AXE, "&eArea de espera", arena.getWaitingRegion() != null && arena.getWaitingRegion().isComplete(),
             "&eClique esquerdo para marcar /pos1 e /pos2",
+            "&cClique direito para limpar"));
+        inventory.setItem(20, action(Material.FEATHER, "&cAnti-void", arena.hasAntiVoidY(),
+            "&eClique esquerdo para salvar o Y atual",
             "&cClique direito para limpar"));
 
         List<TeamColor> activeColors = TeamColor.getOneVsOneColors();
@@ -113,6 +117,15 @@ public class SetupMainMenu extends BaseMenu {
             return;
         }
 
+        if (slot == 20) {
+            if (clickType.isRightClick()) {
+                plugin.getSetupManager().clearArenaPoint(player, arena, SetupPointAction.ARENA_ANTI_VOID);
+            } else {
+                plugin.getSetupManager().beginArenaPointSetup(player, arena, SetupPointAction.ARENA_ANTI_VOID);
+            }
+            return;
+        }
+
         if (slot == 28) {
             if (clickType.isRightClick()) {
                 plugin.getSetupManager().clearArenaPoint(player, arena, SetupPointAction.ARENA_DIAMOND_GENERATOR);
@@ -153,5 +166,17 @@ public class SetupMainMenu extends BaseMenu {
 
     private String status(boolean configured) {
         return configured ? "\u00A7aOK" : "\u00A7cPendente";
+    }
+
+    private String antiVoidStatus() {
+        if (!arena.hasAntiVoidY()) {
+            return "\u00A7cPendente";
+        }
+        double value = arena.getAntiVoidY().doubleValue();
+        double rounded = Math.rint(value);
+        if (Math.abs(value - rounded) < 0.001D) {
+            return "\u00A7aY " + (int) rounded;
+        }
+        return "\u00A7aY " + String.format(java.util.Locale.US, "%.1f", value);
     }
 }

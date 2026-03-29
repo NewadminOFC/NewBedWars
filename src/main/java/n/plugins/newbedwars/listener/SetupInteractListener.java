@@ -26,18 +26,6 @@ public class SetupInteractListener implements Listener {
         ItemStack item = player.getItemInHand();
         Action action = event.getAction();
 
-        if (plugin.getSetupManager().isMenuItem(item) && (action == Action.RIGHT_CLICK_AIR || action == Action.RIGHT_CLICK_BLOCK)) {
-            event.setCancelled(true);
-            plugin.getSetupManager().openMainMenu(player);
-            return;
-        }
-
-        if (plugin.getSetupManager().isWaitingSpawnItem(item) && (action == Action.RIGHT_CLICK_AIR || action == Action.RIGHT_CLICK_BLOCK)) {
-            event.setCancelled(true);
-            plugin.getSetupManager().handleWaitingSpawnItem(player);
-            return;
-        }
-
         if (action == Action.RIGHT_CLICK_AIR || action == Action.RIGHT_CLICK_BLOCK) {
             if (plugin.getSetupManager().handlePendingPoint(player, event.getClickedBlock())) {
                 event.setCancelled(true);
@@ -55,6 +43,18 @@ public class SetupInteractListener implements Listener {
                 plugin.getSetupManager().handleSelection(player, false);
                 return;
             }
+        }
+
+        if (plugin.getSetupManager().isMenuItem(item) && (action == Action.RIGHT_CLICK_AIR || action == Action.RIGHT_CLICK_BLOCK)) {
+            event.setCancelled(true);
+            plugin.getSetupManager().openMainMenu(player);
+            return;
+        }
+
+        if (plugin.getSetupManager().isWaitingSpawnItem(item) && (action == Action.RIGHT_CLICK_AIR || action == Action.RIGHT_CLICK_BLOCK)) {
+            event.setCancelled(true);
+            plugin.getSetupManager().handleWaitingSpawnItem(player, event.getClickedBlock());
+            return;
         }
     }
 }

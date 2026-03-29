@@ -10,6 +10,7 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.FoodLevelChangeEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
+import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.event.player.PlayerKickEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.player.PlayerRespawnEvent;
@@ -75,6 +76,35 @@ public class GamePlayerListener implements Listener {
         }
     }
 
+    @EventHandler
+    public void onMove(PlayerMoveEvent event) {
+        Player player = event.getPlayer();
+        Arena arena = plugin.getArenaManager().getArenaByPlayer(player.getUniqueId());
+        if (arena == null || arena.getState() != ArenaState.INGAME) {
+            return;
+        }
+
+        Double voidY = resolveVoidY(arena);
+        if (voidY == null || player.getLocation().getY() > voidY.doubleValue()) {
+            return;
+        }
+
+        if (arena.getSpectators().contains(player.getUniqueId()) || plugin.getGameManager().isRespawning(player.getUniqueId())) {
+            org.bukkit.Location safeLocation = arena.getSpectatorSpawn();
+            if (safeLocation != null) {
+                player.teleport(safeLocation);
+            }
+            return;
+        }
+
+        if (player.isDead() || player.getHealth() <= 0.0D) {
+            return;
+        }
+
+        player.setLastDamageCause(new EntityDamageEvent(player, EntityDamageEvent.DamageCause.VOID, 1000.0D));
+        player.setHealth(0.0D);
+    }
+
     private void handleLeave(Player player) {
         if (plugin.getSetupManager().isInSetup(player)) {
             plugin.getSetupManager().stopSession(player, false);
@@ -84,5 +114,23 @@ public class GamePlayerListener implements Listener {
             plugin.getGameManager().leaveArena(player, true);
             plugin.getLobbyManager().teleportToMainWorld(player);
         }
+    }
+
+    private Double resolveVoidY(Arena arena) {
+        if (arena == null
+            || arena.getState() != ArenaState.INGAME
+            || !isAntiVoidEnabled()
+            || !arena.hasAntiVoidY()) {
+            return null;
+        }
+
+        return arena.getAntiVoidY();
+    }
+
+    private boolean isAntiVoidEnabled() {
+        if (plugin.getConfig().isBoolean("anti-void")) {
+            return plugin.getConfig().getBoolean("anti-void", true);
+        }
+        return plugin.getConfig().getBoolean("anti-void.enabled", true);
     }
 }

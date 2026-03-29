@@ -19,6 +19,7 @@ import n.plugins.newbedwars.arena.TeamColor;
 import n.plugins.newbedwars.util.CuboidRegion;
 import n.plugins.newbedwars.util.LocationUtil;
 import org.bukkit.Location;
+import org.bukkit.World;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
@@ -43,6 +44,7 @@ public class ArenaManager {
         Arena arena = new Arena(name, worldName);
         configuredArenas.put(name.toLowerCase(), arena);
         saveArena(arena);
+        applyArenaWorldRules(arena.getWorld());
         return arena;
     }
 
@@ -203,6 +205,9 @@ public class ArenaManager {
             Arena arena = new Arena(name, worldName);
             arena.setState(ArenaState.WAITING);
             arena.setWaitingSpawn(LocationUtil.loadLocation(configuration, "waiting-spawn"));
+            if (configuration.isSet("anti-void-y")) {
+                arena.setAntiVoidY(Double.valueOf(configuration.getDouble("anti-void-y")));
+            }
 
             Location waitingPos1 = LocationUtil.loadLocation(configuration, "waiting-region.pos1");
             Location waitingPos2 = LocationUtil.loadLocation(configuration, "waiting-region.pos2");
@@ -286,6 +291,7 @@ public class ArenaManager {
 
             arena.setReady(configuration.getBoolean("ready", false));
             configuredArenas.put(name.toLowerCase(), arena);
+            applyArenaWorldRules(arena.getWorld());
         }
     }
 
@@ -309,6 +315,7 @@ public class ArenaManager {
         configuration.set("state", arena.getState().name());
 
         LocationUtil.saveLocation(configuration, "waiting-spawn", arena.getWaitingSpawn());
+        configuration.set("anti-void-y", arena.getAntiVoidY());
         if (arena.getWaitingRegion() != null) {
             LocationUtil.saveLocation(configuration, "waiting-region.pos1", arena.getWaitingRegion().getPos1());
             LocationUtil.saveLocation(configuration, "waiting-region.pos2", arena.getWaitingRegion().getPos2());
@@ -384,6 +391,31 @@ public class ArenaManager {
             plugin.getNpcManager().clearArenaShopNpcs(arena);
             plugin.getWorldCloneManager().destroyClone(arena);
             runtimeArenas.remove(arena.getName().toLowerCase());
+        }
+    }
+
+    private void applyArenaWorldRules(World world) {
+        if (world == null) {
+            return;
+        }
+
+        if (plugin.getConfig().getBoolean("settings.arena-always-day", true)) {
+            try {
+                world.setGameRuleValue("doDaylightCycle", "false");
+            } catch (Exception ignored) {
+            }
+            world.setTime(1000L);
+        }
+
+        if (plugin.getConfig().getBoolean("settings.arena-clear-weather", true)) {
+            try {
+                world.setGameRuleValue("doWeatherCycle", "false");
+            } catch (Exception ignored) {
+            }
+            world.setStorm(false);
+            world.setThundering(false);
+            world.setWeatherDuration(Integer.MAX_VALUE);
+            world.setThunderDuration(Integer.MAX_VALUE);
         }
     }
 }

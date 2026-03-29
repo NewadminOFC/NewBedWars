@@ -89,7 +89,9 @@ public class NpcManager {
         skinTrait.setShouldUpdateSkins(true);
         skinTrait.setSkinName(skinName, true);
 
+        normalizeSoloNpcName(npc);
         npc.spawn(creator.getLocation());
+        normalizeSoloNpcName(npc);
         hideNameplate(npc);
         refreshNpcSkin(npc);
         updateHologram(npc);
@@ -195,6 +197,7 @@ public class NpcManager {
             }
 
             if (usesHologram(npc)) {
+                normalizeSoloNpcName(npc);
                 updateHologram(npc);
             } else {
                 removeHologram(npc.getId());
@@ -279,6 +282,10 @@ public class NpcManager {
                 continue;
             }
 
+            if (npc.getName() == null || npc.getName().trim().isEmpty()) {
+                continue;
+            }
+
             if (!team.hasEntry(npc.getName())) {
                 team.addEntry(npc.getName());
             }
@@ -352,6 +359,7 @@ public class NpcManager {
             villager.setAdult();
             villager.setCustomName(null);
             villager.setCustomNameVisible(false);
+            silenceVillager(villager);
             try {
                 villager.getClass().getMethod("setRecipes", java.util.List.class).invoke(villager, new ArrayList());
             } catch (Exception ignored) {
@@ -478,8 +486,12 @@ public class NpcManager {
     }
 
     private void hideNameplate(NPC npc) {
+        normalizeSoloNpcName(npc);
         Scoreboard scoreboard = Bukkit.getScoreboardManager().getMainScoreboard();
         applyHiddenNameTeam(scoreboard);
+        for (Player player : Bukkit.getOnlinePlayers()) {
+            applyHiddenNameTeam(player.getScoreboard());
+        }
     }
 
     private boolean usesHologram(NPC npc) {
@@ -533,16 +545,70 @@ public class NpcManager {
 
         Location location = npc.getEntity().getLocation();
         npc.despawn();
+        normalizeSoloNpcName(npc);
         npc.spawn(location);
         if (isSoloNpc(npc)) {
+            normalizeSoloNpcName(npc);
             hideNameplate(npc);
         } else if (npc.getEntity() instanceof Villager) {
             Villager villager = (Villager) npc.getEntity();
             villager.setCustomName(null);
             villager.setCustomNameVisible(false);
+            silenceVillager(villager);
         }
         if (usesHologram(npc)) {
             updateHologram(npc);
+        }
+    }
+
+    private void silenceVillager(Villager villager) {
+        if (villager == null) {
+            return;
+        }
+
+        try {
+            villager.getClass().getMethod("setSilent", boolean.class).invoke(villager, true);
+            return;
+        } catch (Exception ignored) {
+        }
+
+        try {
+            Object handle = villager.getClass().getMethod("getHandle").invoke(villager);
+            handle.getClass().getMethod("setSilent", boolean.class).invoke(handle, true);
+            return;
+        } catch (Exception ignored) {
+        }
+
+        try {
+            Class<?> nbtTagCompoundClass = getNmsClass("NBTTagCompound");
+            Object compound = nbtTagCompoundClass.newInstance();
+            Object handle = villager.getClass().getMethod("getHandle").invoke(villager);
+            handle.getClass().getMethod("c", nbtTagCompoundClass).invoke(handle, compound);
+            nbtTagCompoundClass.getMethod("setBoolean", String.class, boolean.class).invoke(compound, "Silent", true);
+            handle.getClass().getMethod("f", nbtTagCompoundClass).invoke(handle, compound);
+        } catch (Exception ignored) {
+        }
+    }
+
+    private Class<?> getNmsClass(String name) throws ClassNotFoundException {
+        String packageName = Bukkit.getServer().getClass().getPackage().getName();
+        String version = packageName.substring(packageName.lastIndexOf('.') + 1);
+        return Class.forName("net.minecraft.server." + version + "." + name);
+    }
+
+    private void normalizeSoloNpcName(NPC npc) {
+        if (npc == null || !isSoloNpc(npc)) {
+            return;
+        }
+
+        if (!" ".equals(npc.getName())) {
+            npc.setName(" ");
+        }
+
+        if (npc.isSpawned() && npc.getEntity() instanceof Player) {
+            Player entity = (Player) npc.getEntity();
+            entity.setCustomName(null);
+            entity.setCustomNameVisible(false);
         }
     }
 }

@@ -1,12 +1,21 @@
 package n.plugins.newbedwars.menu;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
+import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import n.plugins.newbedwars.NewBedWars;
 import n.plugins.newbedwars.arena.Arena;
 import n.plugins.newbedwars.arena.ArenaTeam;
+import n.plugins.newbedwars.util.ChatUtil;
 import n.plugins.newbedwars.util.ItemBuilder;
+import org.bukkit.ChatColor;
 import org.bukkit.Material;
+import org.bukkit.configuration.ConfigurationSection;
+import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.ClickType;
 import org.bukkit.inventory.ItemStack;
@@ -14,10 +23,28 @@ import org.bukkit.inventory.ItemStack;
 public class ItemShopMenu extends BaseMenu {
 
     private final Map<Integer, Offer> offers;
+    private final Map<Integer, String> categorySlots;
+    private final String categoryKey;
+
+    private static final class Offer {
+        private final String itemKey;
+        private final ConfigurationSection section;
+
+        private Offer(String itemKey, ConfigurationSection section) {
+            this.itemKey = itemKey;
+            this.section = section;
+        }
+    }
 
     public ItemShopMenu(NewBedWars plugin) {
+        this(plugin, plugin.getConfig().getString("item-shop.default-category", "quick-buy"));
+    }
+
+    public ItemShopMenu(NewBedWars plugin, String categoryKey) {
         super(plugin);
         this.offers = new HashMap<Integer, Offer>();
+        this.categorySlots = new HashMap<Integer, String>();
+        this.categoryKey = categoryKey == null || categoryKey.trim().isEmpty() ? "quick-buy" : categoryKey;
     }
 
     @Override
@@ -27,69 +54,43 @@ public class ItemShopMenu extends BaseMenu {
 
     @Override
     protected int getSize() {
-        return 54;
+        int configured = plugin.getConfig().getInt("item-shop.size", 54);
+        if (configured < 9) {
+            return 9;
+        }
+        if (configured > 54) {
+            return 54;
+        }
+        return configured - (configured % 9 == 0 ? 0 : configured % 9);
     }
 
     @Override
     protected void draw(Player player) {
         offers.clear();
+        categorySlots.clear();
         fillBackground();
 
         Arena arena = plugin.getArenaManager().getArenaByPlayer(player.getUniqueId());
         ArenaTeam team = arena == null ? null : plugin.getTeamManager().getTeam(arena, player.getUniqueId());
 
-        addOffer(player, team, 10, new Offer(Material.WOOL, team == null ? (short) 0 : team.getColor().getWoolData(), "&fLa", 4, Material.IRON_INGOT, "16 blocos", new RewardFactory() {
-            @Override
-            public ItemStack[] create(Player target, ArenaTeam targetTeam) {
-                short data = targetTeam == null ? 0 : targetTeam.getColor().getWoolData();
-                return new ItemStack[] {new ItemStack(Material.WOOL, 16, data)};
-            }
-        }));
-        addOffer(player, team, 11, new Offer(Material.STAINED_CLAY, team == null ? (short) 0 : team.getColor().getWoolData(), "&6Argila Endurecida", 12, Material.IRON_INGOT, "16 blocos", new RewardFactory() {
-            @Override
-            public ItemStack[] create(Player target, ArenaTeam targetTeam) {
-                short data = targetTeam == null ? 0 : targetTeam.getColor().getWoolData();
-                return new ItemStack[] {new ItemStack(Material.STAINED_CLAY, 16, data)};
-            }
-        }));
-        addOffer(player, team, 12, new Offer(Material.STAINED_GLASS, team == null ? (short) 0 : team.getColor().getWoolData(), "&bVidro Antiexplosao", 12, Material.IRON_INGOT, "8 blocos", new RewardFactory() {
-            @Override
-            public ItemStack[] create(Player target, ArenaTeam targetTeam) {
-                short data = targetTeam == null ? 0 : targetTeam.getColor().getWoolData();
-                return new ItemStack[] {new ItemStack(Material.STAINED_GLASS, 8, data)};
-            }
-        }));
-        addOffer(player, team, 13, new Offer(Material.ENDER_STONE, (short) 0, "&eEnd Stone", 24, Material.IRON_INGOT, "12 blocos", simpleReward(new ItemStack(Material.ENDER_STONE, 12))));
-        addOffer(player, team, 14, new Offer(Material.WOOD, (short) 0, "&6Madeira", 4, Material.GOLD_INGOT, "16 blocos", simpleReward(new ItemStack(Material.WOOD, 16))));
-        addOffer(player, team, 15, new Offer(Material.LADDER, (short) 0, "&eEscada", 4, Material.IRON_INGOT, "8 escadas", simpleReward(new ItemStack(Material.LADDER, 8))));
-        addOffer(player, team, 16, new Offer(Material.OBSIDIAN, (short) 0, "&5Obsidiana", 4, Material.EMERALD, "4 blocos", simpleReward(new ItemStack(Material.OBSIDIAN, 4))));
-
-        addOffer(player, team, 19, new Offer(Material.STONE_SWORD, (short) 0, "&7Espada de Pedra", 10, Material.IRON_INGOT, "Dano melhorado", swordReward(Material.STONE_SWORD)));
-        addOffer(player, team, 20, new Offer(Material.IRON_SWORD, (short) 0, "&fEspada de Ferro", 7, Material.GOLD_INGOT, "Espada forte", swordReward(Material.IRON_SWORD)));
-        addOffer(player, team, 21, new Offer(Material.DIAMOND_SWORD, (short) 0, "&bEspada de Diamante", 4, Material.EMERALD, "Espada muito forte", swordReward(Material.DIAMOND_SWORD)));
-        addOffer(player, team, 22, new Offer(Material.BOW, (short) 0, "&6Arco", 12, Material.GOLD_INGOT, "Ataque a distancia", simpleReward(new ItemStack(Material.BOW, 1))));
-        addOffer(player, team, 23, new Offer(Material.ARROW, (short) 0, "&fFlechas", 2, Material.GOLD_INGOT, "8 flechas", simpleReward(new ItemStack(Material.ARROW, 8))));
-        addOffer(player, team, 24, new Offer(Material.GOLDEN_APPLE, (short) 0, "&6Maca Dourada", 3, Material.GOLD_INGOT, "Cura rapida", simpleReward(new ItemStack(Material.GOLDEN_APPLE, 1))));
-        addOffer(player, team, 25, new Offer(Material.TNT, (short) 0, "&cTNT", 4, Material.GOLD_INGOT, "Explosivo", simpleReward(new ItemStack(Material.TNT, 1))));
-
-        addOffer(player, team, 28, new Offer(Material.FIREBALL, (short) 0, "&cBola de Fogo", 40, Material.IRON_INGOT, "Empurra inimigos", simpleReward(new ItemStack(Material.FIREBALL, 1))));
-        addOffer(player, team, 29, new Offer(Material.ENDER_PEARL, (short) 0, "&aPerola do Fim", 4, Material.EMERALD, "Teleporte rapido", simpleReward(new ItemStack(Material.ENDER_PEARL, 1))));
-        addOffer(player, team, 30, new Offer(Material.SHEARS, (short) 0, "&fTesoura", 20, Material.IRON_INGOT, "Boa para la", simpleReward(new ItemStack(Material.SHEARS, 1))));
-        addOffer(player, team, 31, new Offer(Material.STONE_PICKAXE, (short) 0, "&7Picareta de Pedra", 10, Material.IRON_INGOT, "Ferramenta", simpleReward(new ItemStack(Material.STONE_PICKAXE, 1))));
-        addOffer(player, team, 32, new Offer(Material.IRON_PICKAXE, (short) 0, "&fPicareta de Ferro", 4, Material.GOLD_INGOT, "Ferramenta melhor", simpleReward(new ItemStack(Material.IRON_PICKAXE, 1))));
-        addOffer(player, team, 33, new Offer(Material.STONE_AXE, (short) 0, "&7Machado de Pedra", 10, Material.IRON_INGOT, "Ferramenta", simpleReward(new ItemStack(Material.STONE_AXE, 1))));
-        addOffer(player, team, 34, new Offer(Material.IRON_AXE, (short) 0, "&fMachado de Ferro", 4, Material.GOLD_INGOT, "Ferramenta melhor", simpleReward(new ItemStack(Material.IRON_AXE, 1))));
-        addOffer(player, team, 37, new Offer(Material.CHAINMAIL_BOOTS, (short) 0, "&fArmadura de Malha", 40, Material.IRON_INGOT, "Melhora bota e calca", simpleReward(new ItemStack(Material.CHAINMAIL_BOOTS, 1))));
-        addOffer(player, team, 38, new Offer(Material.IRON_BOOTS, (short) 0, "&7Armadura de Ferro", 12, Material.GOLD_INGOT, "Melhora bota e calca", simpleReward(new ItemStack(Material.IRON_BOOTS, 1))));
-        addOffer(player, team, 39, new Offer(Material.DIAMOND_BOOTS, (short) 0, "&bArmadura de Diamante", 6, Material.EMERALD, "Melhora bota e calca", simpleReward(new ItemStack(Material.DIAMOND_BOOTS, 1))));
-
-        inventory.setItem(49, new ItemBuilder(Material.BARRIER).name("&cFechar").build());
+        drawInfo(team);
+        drawCloseButton();
+        drawCategories();
+        drawCategoryPanels();
+        drawOffers(player, arena, team);
     }
 
     @Override
     public void handleClick(Player player, int slot, ClickType clickType) {
-        if (slot == 49) {
+        int closeSlot = plugin.getConfig().getInt("item-shop.close.slot", 49);
+        if (closeSlot >= 0 && slot == closeSlot) {
             player.closeInventory();
+            return;
+        }
+
+        String selectedCategory = categorySlots.get(slot);
+        if (selectedCategory != null) {
+            new ItemShopMenu(plugin, selectedCategory).open(player);
             return;
         }
 
@@ -105,131 +106,535 @@ public class ItemShopMenu extends BaseMenu {
             return;
         }
 
-        if (slot == 19) {
-            plugin.getShopManager().buySword(player, team, Material.STONE_SWORD, Material.IRON_INGOT, 10, ChatColorUtil.strip(offer.name));
-            return;
-        }
-        if (slot == 20) {
-            plugin.getShopManager().buySword(player, team, Material.IRON_SWORD, Material.GOLD_INGOT, 7, ChatColorUtil.strip(offer.name));
-            return;
-        }
-        if (slot == 21) {
-            plugin.getShopManager().buySword(player, team, Material.DIAMOND_SWORD, Material.EMERALD, 4, ChatColorUtil.strip(offer.name));
-            return;
-        }
-        if (slot == 37) {
-            plugin.getShopManager().buyArmor(player, arena, team, 1, Material.IRON_INGOT, 40, ChatColorUtil.strip(offer.name));
-            return;
-        }
-        if (slot == 38) {
-            plugin.getShopManager().buyArmor(player, arena, team, 2, Material.GOLD_INGOT, 12, ChatColorUtil.strip(offer.name));
-            return;
-        }
-        if (slot == 39) {
-            plugin.getShopManager().buyArmor(player, arena, team, 3, Material.EMERALD, 6, ChatColorUtil.strip(offer.name));
+        buyConfiguredOffer(player, arena, team, offer.itemKey, offer.section);
+        open(player);
+    }
+
+    private void drawInfo(ArenaTeam team) {
+        ConfigurationSection info = plugin.getConfig().getConfigurationSection("item-shop.info");
+        if (info == null) {
             return;
         }
 
-        ItemStack[] rewards = offer.rewardFactory.create(player, team);
-        plugin.getShopManager().tryBuy(player, ChatColorUtil.strip(offer.name), offer.costType, offer.costAmount, rewards);
+        int slot = info.getInt("slot", 4);
+        if (slot < 0 || slot >= inventory.getSize()) {
+            return;
+        }
+        String categoryName = getCategoryDisplayName(categoryKey);
+        inventory.setItem(slot, buildItem(info, "BOOK", 0, new String[][] {
+            {"%category%", categoryName},
+            {"%team%", team == null ? "&7Sem time" : team.getColor().getColoredName()}
+        }));
+    }
+
+    private void drawCloseButton() {
+        ConfigurationSection close = plugin.getConfig().getConfigurationSection("item-shop.close");
+        if (close == null) {
+            inventory.setItem(49, new ItemBuilder(Material.BARRIER).name("&cFechar").build());
+            return;
+        }
+
+        int slot = close.getInt("slot", 49);
+        if (slot < 0 || slot >= inventory.getSize()) {
+            return;
+        }
+        inventory.setItem(slot, buildItem(close, "BARRIER", 0, null));
+    }
+
+    private void drawCategories() {
+        ConfigurationSection categories = plugin.getConfig().getConfigurationSection("item-shop.categories");
+        if (categories == null) {
+            return;
+        }
+
+        for (String key : categories.getKeys(false)) {
+            ConfigurationSection section = categories.getConfigurationSection(key);
+            if (section == null) {
+                continue;
+            }
+
+            int slot = section.getInt("slot", -1);
+            if (slot < 0 || slot >= inventory.getSize()) {
+                continue;
+            }
+
+            ItemBuilder builder = buildItemBuilder(section, "STONE", 0, null);
+            if (key.equalsIgnoreCase(categoryKey)) {
+                builder.glow();
+            }
+
+            inventory.setItem(slot, builder.build());
+            categorySlots.put(slot, key);
+        }
+    }
+
+    private void drawCategoryPanels() {
+        ConfigurationSection panels = plugin.getConfig().getConfigurationSection("item-shop.category-panels");
+        if (panels == null || !panels.getBoolean("enabled", true)) {
+            return;
+        }
+
+        for (Map.Entry<Integer, String> entry : categorySlots.entrySet()) {
+            int categorySlot = entry.getKey().intValue();
+            String key = entry.getValue();
+            ConfigurationSection category = plugin.getConfig().getConfigurationSection("item-shop.categories." + key);
+            if (category == null) {
+                continue;
+            }
+
+            int slot = category.getInt("panel-slot", categorySlot + panels.getInt("row-offset", 9));
+            if (slot < 0 || slot >= inventory.getSize()) {
+                continue;
+            }
+
+            boolean selected = key.equalsIgnoreCase(categoryKey);
+            ConfigurationSection source = selected
+                ? panels.getConfigurationSection("selected")
+                : panels.getConfigurationSection("default");
+            if (source == null) {
+                continue;
+            }
+
+            ItemBuilder builder = buildItemBuilder(source, "STAINED_GLASS_PANE", selected ? 5 : 7, null);
+            if (selected && panels.getBoolean("selected.glow", true)) {
+                builder.glow();
+            }
+            inventory.setItem(slot, builder.build());
+        }
+    }
+
+    private void drawOffers(Player player, Arena arena, ArenaTeam team) {
+        ConfigurationSection items = plugin.getConfig().getConfigurationSection("item-shop.items");
+        if (items == null) {
+            return;
+        }
+
+        List<OfferEntry> visibleOffers = new ArrayList<OfferEntry>();
+        for (String key : items.getKeys(false)) {
+            ConfigurationSection section = items.getConfigurationSection(key);
+            if (section == null) {
+                continue;
+            }
+
+            if (!shouldShowOffer(section)) {
+                continue;
+            }
+
+            visibleOffers.add(new OfferEntry(key, section, section.getInt("slot", Integer.MAX_VALUE)));
+        }
+
+        Collections.sort(visibleOffers, new Comparator<OfferEntry>() {
+            @Override
+            public int compare(OfferEntry first, OfferEntry second) {
+                if (first.order != second.order) {
+                    return Integer.compare(first.order, second.order);
+                }
+                return first.itemKey.compareToIgnoreCase(second.itemKey);
+            }
+        });
+
+        List<Integer> displaySlots = getDisplaySlots();
+        if (!displaySlots.isEmpty()) {
+            int limit = Math.min(displaySlots.size(), visibleOffers.size());
+            for (int index = 0; index < limit; index++) {
+                renderOffer(displaySlots.get(index).intValue(), visibleOffers.get(index), player, arena, team);
+            }
+            return;
+        }
+
+        for (OfferEntry offer : visibleOffers) {
+            int slot = offer.section.getInt("slot", -1);
+            if (slot < 0 || slot >= inventory.getSize()) {
+                continue;
+            }
+
+            renderOffer(slot, offer, player, arena, team);
+        }
+    }
+
+    private void renderOffer(int slot, OfferEntry offer, Player player, Arena arena, ArenaTeam team) {
+        if (offer == null || offer.section == null || slot < 0 || slot >= inventory.getSize()) {
+            return;
+        }
+
+        String action = offer.section.getString("action", "item").toLowerCase(Locale.ENGLISH);
+        if ("pickaxe".equals(action)) {
+            renderTieredToolOffer(slot, offer, player, arena, team, "pickaxe");
+            return;
+        }
+        if ("axe".equals(action)) {
+            renderTieredToolOffer(slot, offer, player, arena, team, "axe");
+            return;
+        }
+
+        Material costType = parseMaterial(offer.section.getString("cost.material"), Material.IRON_INGOT);
+        int costAmount = Math.max(1, offer.section.getInt("cost.amount", 1));
+        String description = offer.section.getString("description", "");
+
+        String[] placeholders = new String[] {
+            "%cost_amount%", String.valueOf(costAmount),
+            "%cost_name%", plugin.getShopManager().getCurrencyName(costType, costAmount),
+            "%cost_color%", plugin.getShopManager().getCurrencyColor(costType),
+            "%description%", description
+        };
+
+        ItemBuilder builder = buildOfferIcon(offer.section, team, placeholders);
+        inventory.setItem(slot, builder.build());
+        offers.put(slot, new Offer(offer.itemKey, offer.section));
+    }
+
+    private void renderTieredToolOffer(int slot, OfferEntry offer, Player player, Arena arena, ArenaTeam team, String toolType) {
+        int currentTier = getCurrentToolTier(arena, player, toolType);
+        int nextTier = currentTier + 1;
+        ConfigurationSection nextTierSection = getToolTierSection(offer.section, nextTier);
+        boolean maxed = nextTierSection == null;
+        ConfigurationSection displaySection = maxed ? getToolTierSection(offer.section, currentTier) : nextTierSection;
+        if (displaySection == null) {
+            return;
+        }
+
+        Material costType = parseMaterial(displaySection.getString("cost.material"), Material.IRON_INGOT);
+        int costAmount = maxed ? 0 : Math.max(1, displaySection.getInt("cost.amount", 1));
+        String description = displaySection.getString("description", "");
+        String status = maxed
+            ? plugin.getConfig().getString("item-shop.texts.maxed", "&aMaximo")
+            : plugin.getConfig().getString("item-shop.texts.buy", "&eClique para comprar");
+        String costDisplay = maxed
+            ? plugin.getConfig().getString("item-shop.texts.maxed", "&aMaximo")
+            : plugin.getShopManager().getCurrencyColor(costType) + costAmount + " " + plugin.getShopManager().getCurrencyName(costType, costAmount);
+
+        String[] placeholders = new String[] {
+            "%cost_amount%", String.valueOf(costAmount),
+            "%cost_name%", plugin.getShopManager().getCurrencyName(costType, Math.max(1, costAmount)),
+            "%cost_color%", plugin.getShopManager().getCurrencyColor(costType),
+            "%description%", description,
+            "%current_tier%", String.valueOf(currentTier),
+            "%next_tier%", String.valueOf(maxed ? currentTier : nextTier),
+            "%status%", status,
+            "%cost_display%", costDisplay
+        };
+
+        ItemBuilder builder = buildOfferIcon(displaySection, team, placeholders);
+        if (maxed) {
+            builder.glow();
+        }
+        inventory.setItem(slot, builder.build());
+        offers.put(slot, new Offer(offer.itemKey, offer.section));
+    }
+
+    private boolean shouldShowOffer(ConfigurationSection section) {
+        if (section == null) {
+            return false;
+        }
+
+        if ("quick-buy".equalsIgnoreCase(categoryKey)) {
+            return section.getBoolean("quick-buy", false);
+        }
+
+        String targetCategory = section.getString("category", "quick-buy");
+        return categoryKey.equalsIgnoreCase(targetCategory);
+    }
+
+    private ItemBuilder buildOfferIcon(ConfigurationSection section, ArenaTeam team, String[] placeholders) {
+        ConfigurationSection icon = section.getConfigurationSection("icon");
+        Material material = parseMaterial(icon == null ? null : icon.getString("material"), Material.STONE);
+        int amount = icon == null ? 1 : Math.max(1, icon.getInt("amount", 1));
+        short data = resolveData(icon, team);
+        String displayName = icon != null && icon.isString("name") ? icon.getString("name") : section.getString("name", "&fItem");
+        ItemBuilder builder = new ItemBuilder(material, amount, data).name(replace(displayName, placeholders));
+        if (icon != null && material == Material.SKULL_ITEM && icon.isString("skull-owner")) {
+            builder.skullOwner(icon.getString("skull-owner"));
+        }
+
+        java.util.List<String> lore = section.getStringList("lore");
+        if (lore == null || lore.isEmpty()) {
+            lore = java.util.Arrays.asList(
+                "&7" + section.getString("description", ""),
+                "",
+                "&7Custo: %cost_color%%cost_amount% %cost_name%",
+                "",
+                plugin.getConfig().getString("item-shop.texts.buy", "&eClique para comprar")
+            );
+        }
+
+        java.util.List<String> renderedLore = new java.util.ArrayList<String>();
+        for (String line : lore) {
+            renderedLore.add(replace(line, placeholders));
+        }
+
+        builder.lore(renderedLore);
+        if ((icon != null && icon.getBoolean("glow", false)) || section.getBoolean("glow", false)) {
+            builder.glow();
+        }
+        return builder;
+    }
+
+    private void buyConfiguredOffer(Player player, Arena arena, ArenaTeam team, String itemKey, ConfigurationSection section) {
+        String action = section.getString("action", "item").toLowerCase(java.util.Locale.ENGLISH);
+        Material costType = parseMaterial(section.getString("cost.material"), Material.IRON_INGOT);
+        int costAmount = Math.max(1, section.getInt("cost.amount", 1));
+        String itemName = strip(section.getString("name", itemKey));
+
+        if ("sword".equals(action)) {
+            Material swordMaterial = parseMaterial(section.getString("reward.material"), Material.STONE_SWORD);
+            plugin.getShopManager().buySword(player, team, swordMaterial, costType, costAmount, itemName);
+            return;
+        }
+
+        if ("armor".equals(action)) {
+            int armorTier = Math.max(1, section.getInt("reward.armor-tier", 1));
+            plugin.getShopManager().buyArmor(player, arena, team, armorTier, costType, costAmount, itemName);
+            return;
+        }
+
+        if ("pickaxe".equals(action)) {
+            plugin.getShopManager().buyPickaxeUpgrade(player, arena, team, section, itemName);
+            return;
+        }
+
+        if ("axe".equals(action)) {
+            plugin.getShopManager().buyAxeUpgrade(player, arena, team, section, itemName);
+            return;
+        }
+
+        plugin.getShopManager().tryBuy(player, itemName, costType, costAmount, createRewards(section, team));
+    }
+
+    private ItemStack[] createRewards(ConfigurationSection section, ArenaTeam team) {
+        List<ItemStack> rewards = new ArrayList<ItemStack>();
+
+        ConfigurationSection reward = section.getConfigurationSection("reward");
+        if (reward != null) {
+            rewards.add(createConfiguredItem(reward, team, Material.STONE, 1, (short) 0, null, null));
+        }
+
+        ConfigurationSection rewardsSection = section.getConfigurationSection("rewards");
+        if (rewardsSection != null) {
+            for (String key : rewardsSection.getKeys(false)) {
+                ConfigurationSection rewardEntry = rewardsSection.getConfigurationSection(key);
+                if (rewardEntry != null) {
+                    rewards.add(createConfiguredItem(rewardEntry, team, Material.STONE, 1, (short) 0, null, null));
+                }
+            }
+        }
+
+        return rewards.toArray(new ItemStack[rewards.size()]);
     }
 
     private void fillBackground() {
+        ConfigurationSection background = plugin.getConfig().getConfigurationSection("item-shop.background");
+        if (background != null && !background.getBoolean("enabled", true)) {
+            return;
+        }
+
+        ItemStack item = background == null
+            ? new ItemBuilder(Material.STAINED_GLASS_PANE, 1, (short) 15).name("&8 ").build()
+            : buildItem(background, "STAINED_GLASS_PANE", 15, null);
+
         for (int slot = 0; slot < inventory.getSize(); slot++) {
-            inventory.setItem(slot, new ItemBuilder(Material.STAINED_GLASS_PANE, 1, (short) 15).name("&8 ").build());
+            inventory.setItem(slot, item);
         }
     }
 
-    private void addOffer(Player player, ArenaTeam team, int slot, Offer offer) {
-        offers.put(slot, offer);
-        inventory.setItem(slot, new ItemBuilder(offer.icon, 1, offer.data)
-            .name(offer.name)
-            .lore(
-                "&7" + offer.description,
-                "",
-                "&7Custo: " + currencyColor(offer.costType) + offer.costAmount + " " + currencyName(offer.costType),
-                "",
-                "&eClique para comprar"
-            ).build());
+    private ItemStack buildItem(ConfigurationSection section, String defaultMaterial, int defaultData, String[][] placeholders) {
+        return buildItemBuilder(section, defaultMaterial, defaultData, placeholders).build();
     }
 
-    private String currencyColor(Material material) {
-        if (material == Material.IRON_INGOT) {
-            return "&f";
-        }
-        if (material == Material.GOLD_INGOT) {
-            return "&6";
-        }
-        if (material == Material.DIAMOND) {
-            return "&b";
-        }
-        if (material == Material.EMERALD) {
-            return "&a";
-        }
-        return "&7";
-    }
+    private ItemBuilder buildItemBuilder(ConfigurationSection section, String defaultMaterial, int defaultData, String[][] placeholders) {
+        Material material = parseMaterial(section.getString("material"), parseMaterial(defaultMaterial, Material.STONE));
+        short data = (short) section.getInt("data", defaultData);
+        int amount = Math.max(1, section.getInt("amount", 1));
+        ItemBuilder builder = new ItemBuilder(material, amount, data)
+            .name(replace(section.getString("name", "&fItem"), placeholders));
 
-    private String currencyName(Material material) {
-        if (material == Material.IRON_INGOT) {
-            return "ferro";
-        }
-        if (material == Material.GOLD_INGOT) {
-            return "ouro";
-        }
-        if (material == Material.DIAMOND) {
-            return "diamante";
-        }
-        if (material == Material.EMERALD) {
-            return "esmeralda";
-        }
-        return material.name().toLowerCase();
-    }
-
-    private RewardFactory simpleReward(final ItemStack item) {
-        return new RewardFactory() {
-            @Override
-            public ItemStack[] create(Player target, ArenaTeam targetTeam) {
-                return new ItemStack[] {item.clone()};
+        java.util.List<String> lore = section.getStringList("lore");
+        if (lore != null && !lore.isEmpty()) {
+            java.util.List<String> rendered = new java.util.ArrayList<String>();
+            for (String line : lore) {
+                rendered.add(replace(line, placeholders));
             }
-        };
+            builder.lore(rendered);
+        }
+
+        if (section.getBoolean("glow", false)) {
+            builder.glow();
+        }
+        if (material == Material.SKULL_ITEM && section.isString("skull-owner")) {
+            builder.skullOwner(section.getString("skull-owner"));
+        }
+        return builder;
     }
 
-    private RewardFactory swordReward(final Material material) {
-        return new RewardFactory() {
-            @Override
-            public ItemStack[] create(Player target, ArenaTeam targetTeam) {
-                return new ItemStack[] {plugin.getShopManager().createSword(material, targetTeam.hasSharpenedSwords())};
+    private String getCategoryDisplayName(String key) {
+        ConfigurationSection section = plugin.getConfig().getConfigurationSection("item-shop.categories." + key);
+        return section == null ? key : section.getString("name", key);
+    }
+
+    private ConfigurationSection getToolTierSection(ConfigurationSection section, int tier) {
+        if (section == null || tier <= 0) {
+            return null;
+        }
+
+        ConfigurationSection tiers = section.getConfigurationSection("tiers");
+        if (tiers == null) {
+            return null;
+        }
+
+        ConfigurationSection direct = tiers.getConfigurationSection(String.valueOf(tier));
+        if (direct != null) {
+            return direct;
+        }
+
+        for (String key : tiers.getKeys(false)) {
+            try {
+                if (Integer.parseInt(key) == tier) {
+                    return tiers.getConfigurationSection(key);
+                }
+            } catch (NumberFormatException ignored) {
             }
-        };
+        }
+        return null;
     }
 
-    private interface RewardFactory {
-        ItemStack[] create(Player target, ArenaTeam targetTeam);
+    private int getCurrentToolTier(Arena arena, Player player, String toolType) {
+        if (arena == null || player == null) {
+            return 0;
+        }
+
+        return "axe".equals(toolType)
+            ? arena.getAxeTier(player.getUniqueId())
+            : arena.getPickaxeTier(player.getUniqueId());
     }
 
-    private static final class Offer {
-        private final Material icon;
-        private final short data;
-        private final String name;
-        private final int costAmount;
-        private final Material costType;
-        private final String description;
-        private final RewardFactory rewardFactory;
+    private List<Integer> getDisplaySlots() {
+        List<Integer> configured = plugin.getConfig().getIntegerList("item-shop.categories." + categoryKey + ".display-slots");
+        if (configured == null || configured.isEmpty()) {
+            configured = plugin.getConfig().getIntegerList("item-shop.offer-display-slots");
+        }
+        List<Integer> valid = new ArrayList<Integer>();
+        for (Integer slot : configured) {
+            if (slot == null || slot.intValue() < 0 || slot.intValue() >= inventory.getSize()) {
+                continue;
+            }
+            valid.add(slot);
+        }
+        return valid;
+    }
 
-        private Offer(Material icon, short data, String name, int costAmount, Material costType, String description, RewardFactory rewardFactory) {
-            this.icon = icon;
-            this.data = data;
-            this.name = name;
-            this.costAmount = costAmount;
-            this.costType = costType;
-            this.description = description;
-            this.rewardFactory = rewardFactory;
+    private short resolveData(ConfigurationSection section, ArenaTeam team) {
+        if (section == null) {
+            return 0;
+        }
+
+        if (section.getBoolean("team-color-data", false) && team != null) {
+            return team.getColor().getWoolData();
+        }
+
+        return (short) section.getInt("data", 0);
+    }
+
+    private Material parseMaterial(String name, Material fallback) {
+        if (name == null || name.trim().isEmpty()) {
+            return fallback;
+        }
+
+        try {
+            return Material.valueOf(name.trim().toUpperCase(java.util.Locale.ENGLISH));
+        } catch (IllegalArgumentException exception) {
+            return fallback;
         }
     }
 
-    private static final class ChatColorUtil {
-        private static String strip(String text) {
-            return text == null ? "" : text.replaceAll("(?i)\u00A7[0-9A-FK-OR]", "");
+    private String replace(String text, String[][] placeholders) {
+        if (text == null) {
+            return "";
+        }
+
+        String result = text;
+        if (placeholders != null) {
+            for (String[] entry : placeholders) {
+                if (entry != null && entry.length >= 2) {
+                    result = result.replace(entry[0], entry[1]);
+                }
+            }
+        }
+        return result;
+    }
+
+    private String replace(String text, String[] placeholders) {
+        if (text == null) {
+            return "";
+        }
+
+        String result = text;
+        if (placeholders != null) {
+            for (int index = 0; index + 1 < placeholders.length; index += 2) {
+                result = result.replace(placeholders[index], placeholders[index + 1]);
+            }
+        }
+        return result;
+    }
+
+    private ItemStack createConfiguredItem(ConfigurationSection section, ArenaTeam team, Material fallbackMaterial, int fallbackAmount, short fallbackData, String fallbackName, String[] placeholders) {
+        if (section == null) {
+            ItemBuilder fallback = new ItemBuilder(fallbackMaterial, fallbackAmount, fallbackData);
+            if (fallbackName != null) {
+                fallback.name(replace(fallbackName, placeholders));
+            }
+            return fallback.build();
+        }
+
+        Material material = parseMaterial(section.getString("material"), fallbackMaterial);
+        int amount = Math.max(1, section.getInt("amount", fallbackAmount));
+        short data = resolveData(section, team);
+        ItemBuilder builder = new ItemBuilder(material, amount, data);
+        if (section.isString("name") || fallbackName != null) {
+            builder.name(replace(section.getString("name", fallbackName == null ? "" : fallbackName), placeholders));
+        }
+
+        List<String> lore = section.getStringList("lore");
+        if (!lore.isEmpty()) {
+            List<String> renderedLore = new ArrayList<String>();
+            for (String line : lore) {
+                renderedLore.add(replace(line, placeholders));
+            }
+            builder.lore(renderedLore);
+        }
+
+        if (material == Material.SKULL_ITEM && section.isString("skull-owner")) {
+            builder.skullOwner(section.getString("skull-owner"));
+        }
+        if (section.getBoolean("glow", false)) {
+            builder.glow();
+        }
+
+        ItemStack item = builder.build();
+        ConfigurationSection enchants = section.getConfigurationSection("enchantments");
+        if (enchants != null) {
+            for (String enchantName : enchants.getKeys(false)) {
+                Enchantment enchantment = Enchantment.getByName(enchantName.toUpperCase(Locale.ENGLISH));
+                if (enchantment != null) {
+                    item.addUnsafeEnchantment(enchantment, Math.max(1, enchants.getInt(enchantName, 1)));
+                }
+            }
+        }
+        return item;
+    }
+
+    private String strip(String text) {
+        return ChatColor.stripColor(ChatUtil.color(text == null ? "" : text));
+    }
+
+    private static final class OfferEntry {
+
+        private final String itemKey;
+        private final ConfigurationSection section;
+        private final int order;
+
+        private OfferEntry(String itemKey, ConfigurationSection section, int order) {
+            this.itemKey = itemKey;
+            this.section = section;
+            this.order = order;
         }
     }
 }

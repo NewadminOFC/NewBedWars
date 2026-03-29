@@ -43,18 +43,22 @@ public class MenuManager {
     }
 
     public void openSetupMainMenu(Player player, Arena arena) {
+        plugin.getSetupManager().prepareSetupMenuInventory(player);
         new SetupMainMenu(plugin, arena).open(player);
     }
 
     public void openTeamSetupMenu(Player player, Arena arena, TeamColor color) {
+        plugin.getSetupManager().prepareSetupMenuInventory(player);
         new TeamSetupMenu(plugin, arena, color).open(player);
     }
 
     public void openSetupConfirmMenu(Player player, Arena arena) {
+        plugin.getSetupManager().prepareSetupMenuInventory(player);
         new SetupConfirmMenu(plugin, arena).open(player);
     }
 
     public void openSetupNpcMenu(Player player, Arena arena, TeamColor color, BedWarsNpcType type) {
+        plugin.getSetupManager().prepareSetupMenuInventory(player);
         new SetupNpcMenu(plugin, arena, color, type).open(player);
     }
 

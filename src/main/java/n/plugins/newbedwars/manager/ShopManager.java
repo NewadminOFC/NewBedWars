@@ -1,7 +1,10 @@
 package n.plugins.newbedwars.manager;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 import java.util.UUID;
 import n.plugins.newbedwars.NewBedWars;
 import n.plugins.newbedwars.arena.Arena;
@@ -9,9 +12,11 @@ import n.plugins.newbedwars.arena.ArenaTeam;
 import n.plugins.newbedwars.arena.TeamColor;
 import n.plugins.newbedwars.util.ChatUtil;
 import n.plugins.newbedwars.util.CuboidRegion;
+import n.plugins.newbedwars.util.SoundUtil;
 import org.bukkit.Bukkit;
 import org.bukkit.Color;
 import org.bukkit.Material;
+import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
@@ -30,7 +35,11 @@ public class ShopManager {
 
     public boolean tryBuy(Player player, String itemName, Material currency, int amount, ItemStack... rewards) {
         if (!hasEnough(player, currency, amount)) {
-            send(player, "&cVoce precisa de &f" + amount + " " + getCurrencyName(currency) + "&c.");
+            sendMessage(player, "shops.need-currency", placeholders(
+                "amount", String.valueOf(amount),
+                "currency", getCurrencyName(currency, amount)
+            ));
+            SoundUtil.playConfigured(plugin, player, "sound-effects.shop-buy-fail", "VILLAGER_NO", 1.0F, 1.0F);
             return false;
         }
 
@@ -38,7 +47,10 @@ public class ShopManager {
         for (ItemStack reward : rewards) {
             giveOrDrop(player, reward);
         }
-        send(player, "&aVoce comprou &f" + itemName + "&a.");
+        sendMessage(player, "shops.buy-success", placeholders(
+            "item", cleanName(itemName)
+        ));
+        SoundUtil.playConfigured(plugin, player, "sound-effects.shop-buy-success", "ORB_PICKUP", 1.0F, 1.2F);
         return true;
     }
 
@@ -101,6 +113,7 @@ public class ShopManager {
         Arena arena = plugin.getArenaManager().getArenaByPlayer(player.getUniqueId());
         applyArmorLoadout(player, arena, team);
         giveStarterSword(player, team);
+        applyPermanentTools(player, arena, team);
         applyUpgradeEffects(player, team);
         player.updateInventory();
     }
@@ -156,78 +169,20 @@ public class ShopManager {
     }
 
     public boolean buySharpness(Player player, Arena arena, ArenaTeam team) {
-        if (team.hasSharpenedSwords()) {
-            send(player, "&cSeu time ja possui Espadas Afiadas.");
-            return false;
-        }
-        if (!hasEnough(player, Material.DIAMOND, 4)) {
-            send(player, "&cVoce precisa de &f4 diamantes&c.");
-            return false;
-        }
-
-        removeCurrency(player, Material.DIAMOND, 4);
-        team.setSharpenedSwords(true);
-        refreshTeamUpgrades(arena, team);
-        send(player, "&aSeu time comprou &fEspadas Afiadas&a.");
-        return true;
+        return buyConfiguredUpgrade(player, arena, team, "sharpness");
     }
 
     public boolean buyProtection(Player player, Arena arena, ArenaTeam team) {
-        int current = team.getProtectionTier();
-        if (current >= 4) {
-            send(player, "&cSua armadura ja esta no maximo.");
-            return false;
-        }
-
-        int[] costs = new int[] {2, 4, 8, 16};
-        int cost = costs[current];
-        if (!hasEnough(player, Material.DIAMOND, cost)) {
-            send(player, "&cVoce precisa de &f" + cost + " diamantes&c.");
-            return false;
-        }
-
-        removeCurrency(player, Material.DIAMOND, cost);
-        team.setProtectionTier(current + 1);
-        refreshTeamUpgrades(arena, team);
-        send(player, "&aSeu time melhorou &fProtecao &apara nivel &f" + team.getProtectionTier() + "&a.");
-        return true;
+        return buyConfiguredUpgrade(player, arena, team, "protection");
     }
 
     public boolean buyManiacMiner(Player player, Arena arena, ArenaTeam team) {
-        int current = team.getManiacMinerTier();
-        if (current >= 2) {
-            send(player, "&cSeu time ja esta no maximo de Minerador Maniaco.");
-            return false;
-        }
-
-        int[] costs = new int[] {2, 4};
-        int cost = costs[current];
-        if (!hasEnough(player, Material.DIAMOND, cost)) {
-            send(player, "&cVoce precisa de &f" + cost + " diamantes&c.");
-            return false;
-        }
-
-        removeCurrency(player, Material.DIAMOND, cost);
-        team.setManiacMinerTier(current + 1);
-        refreshTeamUpgrades(arena, team);
-        send(player, "&aSeu time comprou &fMinerador Maniaco " + team.getManiacMinerTier() + "&a.");
-        return true;
+        return buyConfiguredUpgrade(player, arena, team, "maniac-miner");
     }
 
     public boolean buyHealPool(Player player, ArenaTeam team) {
-        if (team.hasHealPool()) {
-            send(player, "&cSeu time ja possui Piscina de Cura.");
-            return false;
-        }
-        if (!hasEnough(player, Material.DIAMOND, 1)) {
-            send(player, "&cVoce precisa de &f1 diamante&c.");
-            return false;
-        }
-
-        removeCurrency(player, Material.DIAMOND, 1);
-        team.setHealPool(true);
-        send(player, "&aSeu time comprou &fPiscina de Cura&a.");
-        return true;
+        Arena arena = plugin.getArenaManager().getArenaByPlayer(player.getUniqueId());
+        return buyConfiguredUpgrade(player, arena, team, "heal-pool");
     }
 
     public boolean buySword(Player player, ArenaTeam team, Material material, Material currency, int amount, String itemName) {
@@ -237,18 +192,26 @@ public class ShopManager {
 
         Material currentSword = getBestSwordMaterial(player);
         if (getSwordTier(currentSword) >= getSwordTier(material)) {
-            send(player, "&cVoce ja possui essa espada ou uma melhor.");
+            sendMessage(player, "shops.sword-already-better");
+            SoundUtil.playConfigured(plugin, player, "sound-effects.shop-buy-fail", "VILLAGER_NO", 1.0F, 1.0F);
             return false;
         }
 
         if (!hasEnough(player, currency, amount)) {
-            send(player, "&cVoce precisa de &f" + amount + " " + getCurrencyName(currency) + "&c.");
+            sendMessage(player, "shops.need-currency", placeholders(
+                "amount", String.valueOf(amount),
+                "currency", getCurrencyName(currency, amount)
+            ));
+            SoundUtil.playConfigured(plugin, player, "sound-effects.shop-buy-fail", "VILLAGER_NO", 1.0F, 1.0F);
             return false;
         }
 
         removeCurrency(player, currency, amount);
         replaceSword(player, material, team.hasSharpenedSwords());
-        send(player, "&aVoce comprou &f" + itemName + "&a.");
+        sendMessage(player, "shops.buy-success", placeholders(
+            "item", cleanName(itemName)
+        ));
+        SoundUtil.playConfigured(plugin, player, "sound-effects.shop-buy-success", "ORB_PICKUP", 1.0F, 1.2F);
         return true;
     }
 
@@ -258,20 +221,297 @@ public class ShopManager {
         }
 
         if (arena.getArmorTier(player.getUniqueId()) >= tier) {
-            send(player, "&cVoce ja possui essa armadura ou uma melhor.");
+            sendMessage(player, "shops.armor-already-better");
+            SoundUtil.playConfigured(plugin, player, "sound-effects.shop-buy-fail", "VILLAGER_NO", 1.0F, 1.0F);
             return false;
         }
 
         if (!hasEnough(player, currency, amount)) {
-            send(player, "&cVoce precisa de &f" + amount + " " + getCurrencyName(currency) + "&c.");
+            sendMessage(player, "shops.need-currency", placeholders(
+                "amount", String.valueOf(amount),
+                "currency", getCurrencyName(currency, amount)
+            ));
+            SoundUtil.playConfigured(plugin, player, "sound-effects.shop-buy-fail", "VILLAGER_NO", 1.0F, 1.0F);
             return false;
         }
 
         removeCurrency(player, currency, amount);
         arena.setArmorTier(player.getUniqueId(), tier);
         applyArmorLoadout(player, arena, team);
-        send(player, "&aVoce comprou &f" + itemName + "&a.");
+        sendMessage(player, "shops.buy-success", placeholders(
+            "item", cleanName(itemName)
+        ));
+        SoundUtil.playConfigured(plugin, player, "sound-effects.shop-buy-success", "ORB_PICKUP", 1.0F, 1.2F);
         return true;
+    }
+
+    public boolean buyPickaxeUpgrade(Player player, Arena arena, ArenaTeam team, ConfigurationSection offerSection, String fallbackName) {
+        return buyTieredToolUpgrade(player, arena, team, offerSection, fallbackName, "pickaxe");
+    }
+
+    public boolean buyAxeUpgrade(Player player, Arena arena, ArenaTeam team, ConfigurationSection offerSection, String fallbackName) {
+        return buyTieredToolUpgrade(player, arena, team, offerSection, fallbackName, "axe");
+    }
+
+    private boolean buyTieredToolUpgrade(Player player, Arena arena, ArenaTeam team, ConfigurationSection offerSection, String fallbackName, String toolType) {
+        if (player == null || arena == null || team == null || offerSection == null) {
+            return false;
+        }
+
+        int currentTier = getToolTier(arena, player.getUniqueId(), toolType);
+        int nextTier = currentTier + 1;
+        ConfigurationSection nextTierSection = getToolTierSection(offerSection, nextTier);
+        if (nextTierSection == null) {
+            sendMessage(player, "axe".equals(toolType) ? "shops.axe-already-maxed" : "shops.pickaxe-already-maxed");
+            SoundUtil.playConfigured(plugin, player, "sound-effects.shop-buy-fail", "VILLAGER_NO", 1.0F, 1.0F);
+            return false;
+        }
+
+        Material currency = parseMaterial(nextTierSection.getString("cost.material"), Material.IRON_INGOT);
+        int amount = Math.max(1, nextTierSection.getInt("cost.amount", 1));
+        if (!hasEnough(player, currency, amount)) {
+            sendMessage(player, "shops.need-currency", placeholders(
+                "amount", String.valueOf(amount),
+                "currency", getCurrencyName(currency, amount)
+            ));
+            SoundUtil.playConfigured(plugin, player, "sound-effects.shop-buy-fail", "VILLAGER_NO", 1.0F, 1.0F);
+            return false;
+        }
+
+        removeCurrency(player, currency, amount);
+        setToolTier(arena, player.getUniqueId(), toolType, nextTier);
+
+        ItemStack toolItem = createConfiguredTool(nextTierSection,
+            "axe".equals(toolType) ? Material.WOOD_AXE : Material.WOOD_PICKAXE,
+            team);
+        if ("axe".equals(toolType)) {
+            replaceAxe(player, toolItem);
+        } else {
+            replacePickaxe(player, toolItem);
+        }
+
+        sendMessage(player, "shops.buy-success", placeholders(
+            "item", cleanName(nextTierSection.getString("name", fallbackName))
+        ));
+        SoundUtil.playConfigured(plugin, player, "sound-effects.shop-buy-success", "ORB_PICKUP", 1.0F, 1.2F);
+        return true;
+    }
+
+    public boolean buyConfiguredUpgrade(Player player, Arena arena, ArenaTeam team, String upgradeKey) {
+        if (player == null || team == null || upgradeKey == null || upgradeKey.trim().isEmpty()) {
+            return false;
+        }
+
+        ConfigurationSection section = getUpgradeSection(upgradeKey);
+        String normalized = normalizeUpgradeAction(section == null ? upgradeKey : section.getString("action", upgradeKey));
+        String upgradeName = cleanName(section == null ? upgradeKey : section.getString("name", upgradeKey));
+        int currentLevel = getUpgradeLevel(team, upgradeKey);
+        int maxLevel = getUpgradeMaxLevel(upgradeKey);
+
+        if (maxLevel > 0 && currentLevel >= maxLevel) {
+            sendMessage(player, maxLevel <= 1 ? "shops.upgrade-already-owned" : "shops.upgrade-maxed", placeholders(
+                "upgrade", upgradeName,
+                "level", String.valueOf(currentLevel)
+            ));
+            SoundUtil.playConfigured(plugin, player, "sound-effects.shop-buy-fail", "VILLAGER_NO", 1.0F, 1.0F);
+            return false;
+        }
+
+        Material currency = getUpgradeCurrency(upgradeKey);
+        int cost = getNextUpgradeCost(team, upgradeKey);
+        if (cost <= 0) {
+            sendMessage(player, "shops.upgrade-maxed", placeholders(
+                "upgrade", upgradeName,
+                "level", String.valueOf(currentLevel)
+            ));
+            SoundUtil.playConfigured(plugin, player, "sound-effects.shop-buy-fail", "VILLAGER_NO", 1.0F, 1.0F);
+            return false;
+        }
+
+        if (!hasEnough(player, currency, cost)) {
+            sendMessage(player, "shops.need-currency", placeholders(
+                "amount", String.valueOf(cost),
+                "currency", getCurrencyName(currency, cost)
+            ));
+            SoundUtil.playConfigured(plugin, player, "sound-effects.shop-buy-fail", "VILLAGER_NO", 1.0F, 1.0F);
+            return false;
+        }
+
+        removeCurrency(player, currency, cost);
+
+        if ("sharpness".equals(normalized)) {
+            team.setSharpenedSwords(true);
+            refreshTeamUpgrades(arena, team);
+            sendMessage(player, "shops.upgrade-purchased", placeholders(
+                "upgrade", upgradeName,
+                "level", "1"
+            ));
+        } else if ("protection".equals(normalized)) {
+            team.setProtectionTier(Math.min(maxLevel, currentLevel + 1));
+            refreshTeamUpgrades(arena, team);
+            sendMessage(player, "shops.upgrade-tier-purchased", placeholders(
+                "upgrade", upgradeName,
+                "level", String.valueOf(team.getProtectionTier())
+            ));
+        } else if ("maniac-miner".equals(normalized)) {
+            team.setManiacMinerTier(Math.min(maxLevel, currentLevel + 1));
+            refreshTeamUpgrades(arena, team);
+            sendMessage(player, "shops.upgrade-tier-purchased", placeholders(
+                "upgrade", upgradeName,
+                "level", String.valueOf(team.getManiacMinerTier())
+            ));
+        } else if ("tool-enchant".equals(normalized)) {
+            team.setToolEnchantTier(Math.min(maxLevel, currentLevel + 1));
+            refreshTeamUpgrades(arena, team);
+            sendMessage(player, "shops.upgrade-tier-purchased", placeholders(
+                "upgrade", upgradeName,
+                "level", String.valueOf(team.getToolEnchantTier())
+            ));
+        } else if ("heal-pool".equals(normalized)) {
+            team.setHealPool(true);
+            sendMessage(player, "shops.upgrade-purchased", placeholders(
+                "upgrade", upgradeName,
+                "level", "1"
+            ));
+        } else {
+            sendMessage(player, "shops.upgrade-maxed", placeholders(
+                "upgrade", upgradeName,
+                "level", String.valueOf(currentLevel)
+            ));
+            SoundUtil.playConfigured(plugin, player, "sound-effects.shop-buy-fail", "VILLAGER_NO", 1.0F, 1.0F);
+            return false;
+        }
+
+        SoundUtil.playConfigured(plugin, player, "sound-effects.shop-buy-success", "ORB_PICKUP", 1.0F, 1.2F);
+        return true;
+    }
+
+    public int getUpgradeLevel(ArenaTeam team, String upgradeKey) {
+        if (team == null) {
+            return 0;
+        }
+
+        String normalized = resolveUpgradeAction(upgradeKey);
+        if ("sharpness".equals(normalized)) {
+            return team.hasSharpenedSwords() ? 1 : 0;
+        }
+        if ("protection".equals(normalized)) {
+            return team.getProtectionTier();
+        }
+        if ("maniac-miner".equals(normalized)) {
+            return team.getManiacMinerTier();
+        }
+        if ("tool-enchant".equals(normalized)) {
+            return team.getToolEnchantTier();
+        }
+        if ("heal-pool".equals(normalized)) {
+            return team.hasHealPool() ? 1 : 0;
+        }
+        return 0;
+    }
+
+    public int getUpgradeMaxLevel(String upgradeKey) {
+        ConfigurationSection section = getUpgradeSection(upgradeKey);
+        if (section == null) {
+            return defaultUpgradeMaxLevel(upgradeKey);
+        }
+
+        int configured = section.getInt("cost.max-level", -1);
+        if (configured > 0) {
+            return configured;
+        }
+
+        List<Integer> amounts = section.getIntegerList("cost.amounts");
+        if (!amounts.isEmpty()) {
+            return amounts.size();
+        }
+
+        return defaultUpgradeMaxLevel(upgradeKey);
+    }
+
+    public Material getUpgradeCurrency(String upgradeKey) {
+        ConfigurationSection section = getUpgradeSection(upgradeKey);
+        if (section == null) {
+            return Material.DIAMOND;
+        }
+
+        return parseMaterial(section.getString("cost.material"), Material.DIAMOND);
+    }
+
+    public int getNextUpgradeCost(ArenaTeam team, String upgradeKey) {
+        ConfigurationSection section = getUpgradeSection(upgradeKey);
+        if (section == null) {
+            return defaultUpgradeCost(team, upgradeKey);
+        }
+
+        int currentLevel = getUpgradeLevel(team, upgradeKey);
+        List<Integer> amounts = section.getIntegerList("cost.amounts");
+        if (!amounts.isEmpty()) {
+            return currentLevel >= amounts.size() ? 0 : Math.max(0, amounts.get(currentLevel));
+        }
+
+        int single = section.getInt("cost.amount", -1);
+        if (single > 0) {
+            return currentLevel >= getUpgradeMaxLevel(upgradeKey) ? 0 : single;
+        }
+
+        return defaultUpgradeCost(team, upgradeKey);
+    }
+
+    public String getCurrencyName(Material material, int amount) {
+        String key = material == null ? "unknown" : material.name().toLowerCase(Locale.ENGLISH);
+        String path = "currencies." + key + ".";
+        String singular = plugin.getConfig().getString(path + "singular");
+        String plural = plugin.getConfig().getString(path + "plural");
+
+        if (amount == 1 && singular != null && !singular.trim().isEmpty()) {
+            return singular;
+        }
+        if (amount != 1 && plural != null && !plural.trim().isEmpty()) {
+            return plural;
+        }
+        if (singular != null && !singular.trim().isEmpty()) {
+            return singular;
+        }
+
+        if (material == Material.IRON_INGOT) {
+            return amount == 1 ? "ferro" : "ferros";
+        }
+        if (material == Material.GOLD_INGOT) {
+            return amount == 1 ? "ouro" : "ouros";
+        }
+        if (material == Material.DIAMOND) {
+            return amount == 1 ? "diamante" : "diamantes";
+        }
+        if (material == Material.EMERALD) {
+            return amount == 1 ? "esmeralda" : "esmeraldas";
+        }
+        return material == null ? "item" : material.name().toLowerCase(Locale.ENGLISH);
+    }
+
+    public String getCurrencyColor(Material material) {
+        if (material == null) {
+            return "&7";
+        }
+
+        String configured = plugin.getConfig().getString("currencies." + material.name().toLowerCase(Locale.ENGLISH) + ".color");
+        if (configured != null && !configured.trim().isEmpty()) {
+            return configured;
+        }
+
+        if (material == Material.IRON_INGOT) {
+            return "&f";
+        }
+        if (material == Material.GOLD_INGOT) {
+            return "&6";
+        }
+        if (material == Material.DIAMOND) {
+            return "&b";
+        }
+        if (material == Material.EMERALD) {
+            return "&a";
+        }
+        return "&7";
     }
 
     public ItemStack createSword(Material material, boolean sharpness) {
@@ -286,12 +526,21 @@ public class ShopManager {
         player.sendMessage(plugin.getMessageManager().get("prefix") + ChatUtil.color(message));
     }
 
+    public void sendMessage(Player player, String path) {
+        player.sendMessage(plugin.getMessageManager().get(path));
+    }
+
+    public void sendMessage(Player player, String path, Map<String, String> placeholders) {
+        player.sendMessage(plugin.getMessageManager().get(path, placeholders));
+    }
+
     private void refreshInventoryUpgrades(Player player, ArenaTeam team) {
         Arena arena = plugin.getArenaManager().getArenaByPlayer(player.getUniqueId());
         applyArmorLoadout(player, arena, team);
         applyProtectionToArmor(player.getInventory().getArmorContents(), team.getProtectionTier());
         ensureSwordPresent(player, team);
         reapplySwordSharpness(player, team.hasSharpenedSwords());
+        applyPermanentTools(player, arena, team);
         applyUpgradeEffects(player, team);
         player.updateInventory();
     }
@@ -339,6 +588,234 @@ public class ShopManager {
         clearSwords(inventory);
         inventory.setItem(preferredSlot, createSword(material, sharpness));
         player.updateInventory();
+    }
+
+    private void applyPermanentTools(Player player, Arena arena, ArenaTeam team) {
+        if (player == null || arena == null || team == null) {
+            return;
+        }
+
+        ConfigurationSection pickaxeOffer = plugin.getConfig().getConfigurationSection("item-shop.items.pickaxe");
+        int pickaxeTier = arena.getPickaxeTier(player.getUniqueId());
+        if (pickaxeOffer != null && pickaxeTier > 0) {
+            ConfigurationSection tierSection = getToolTierSection(pickaxeOffer, pickaxeTier);
+            if (tierSection != null) {
+                replacePickaxe(player, createConfiguredTool(tierSection, Material.WOOD_PICKAXE, team));
+            }
+        }
+
+        ConfigurationSection axeOffer = plugin.getConfig().getConfigurationSection("item-shop.items.axe");
+        int axeTier = arena.getAxeTier(player.getUniqueId());
+        if (axeOffer != null && axeTier > 0) {
+            ConfigurationSection tierSection = getToolTierSection(axeOffer, axeTier);
+            if (tierSection != null) {
+                replaceAxe(player, createConfiguredTool(tierSection, Material.WOOD_AXE, team));
+            }
+        }
+
+        reapplyToolEnchantments(player, team);
+    }
+
+    private void reapplyToolEnchantments(Player player, ArenaTeam team) {
+        for (ItemStack item : player.getInventory().getContents()) {
+            if (item == null || (!isPickaxe(item.getType()) && !isAxe(item.getType()))) {
+                continue;
+            }
+
+            clearTeamToolEnchantments(item);
+            applyTeamToolEnchantments(item, team);
+        }
+    }
+
+    private void replacePickaxe(Player player, ItemStack pickaxe) {
+        if (player == null || pickaxe == null) {
+            return;
+        }
+
+        PlayerInventory inventory = player.getInventory();
+        int preferredSlot = findPickaxeSlot(player);
+        clearPickaxes(inventory);
+
+        if (preferredSlot != -1) {
+            inventory.setItem(preferredSlot, pickaxe);
+        } else {
+            int freeSlot = findFirstFreeToolSlot(inventory);
+            if (freeSlot != -1) {
+                inventory.setItem(freeSlot, pickaxe);
+            } else {
+                giveOrDrop(player, pickaxe);
+                return;
+            }
+        }
+
+        player.updateInventory();
+    }
+
+    private void replaceAxe(Player player, ItemStack axe) {
+        if (player == null || axe == null) {
+            return;
+        }
+
+        PlayerInventory inventory = player.getInventory();
+        int preferredSlot = findAxeSlot(player);
+        clearAxes(inventory);
+
+        if (preferredSlot != -1) {
+            inventory.setItem(preferredSlot, axe);
+        } else {
+            int freeSlot = findFirstFreeToolSlot(inventory);
+            if (freeSlot != -1) {
+                inventory.setItem(freeSlot, axe);
+            } else {
+                giveOrDrop(player, axe);
+                return;
+            }
+        }
+
+        player.updateInventory();
+    }
+
+    private void clearPickaxes(PlayerInventory inventory) {
+        for (int slot = 0; slot < inventory.getSize(); slot++) {
+            ItemStack item = inventory.getItem(slot);
+            if (item == null || !isPickaxe(item.getType())) {
+                continue;
+            }
+            inventory.setItem(slot, null);
+        }
+    }
+
+    private void clearAxes(PlayerInventory inventory) {
+        for (int slot = 0; slot < inventory.getSize(); slot++) {
+            ItemStack item = inventory.getItem(slot);
+            if (item == null || !isAxe(item.getType())) {
+                continue;
+            }
+            inventory.setItem(slot, null);
+        }
+    }
+
+    private int findPickaxeSlot(Player player) {
+        PlayerInventory inventory = player.getInventory();
+        for (int slot = 0; slot < inventory.getSize(); slot++) {
+            ItemStack item = inventory.getItem(slot);
+            if (item != null && isPickaxe(item.getType())) {
+                return slot;
+            }
+        }
+        return -1;
+    }
+
+    private int findAxeSlot(Player player) {
+        PlayerInventory inventory = player.getInventory();
+        for (int slot = 0; slot < inventory.getSize(); slot++) {
+            ItemStack item = inventory.getItem(slot);
+            if (item != null && isAxe(item.getType())) {
+                return slot;
+            }
+        }
+        return -1;
+    }
+
+    private int findFirstFreeToolSlot(PlayerInventory inventory) {
+        for (int slot = 2; slot <= 8; slot++) {
+            ItemStack item = inventory.getItem(slot);
+            if (item == null || item.getType() == Material.AIR) {
+                return slot;
+            }
+        }
+
+        for (int slot = 9; slot < inventory.getSize(); slot++) {
+            ItemStack item = inventory.getItem(slot);
+            if (item == null || item.getType() == Material.AIR) {
+                return slot;
+            }
+        }
+        return -1;
+    }
+
+    private ItemStack createConfiguredTool(ConfigurationSection tierSection, Material fallbackMaterial, ArenaTeam team) {
+        ConfigurationSection reward = tierSection == null ? null : tierSection.getConfigurationSection("reward");
+        ConfigurationSection source = reward == null ? tierSection : reward;
+        if (source == null) {
+            return new ItemStack(fallbackMaterial, 1);
+        }
+
+        Material material = parseMaterial(source.getString("material"), fallbackMaterial);
+        int amount = Math.max(1, source.getInt("amount", 1));
+        short data = (short) source.getInt("data", 0);
+        ItemStack item = new ItemStack(material, amount, data);
+        applyConfiguredEnchantments(item, source.getConfigurationSection("enchantments"));
+        applyTeamToolEnchantments(item, team);
+        return item;
+    }
+
+    private void applyConfiguredEnchantments(ItemStack item, ConfigurationSection section) {
+        if (item == null || section == null) {
+            return;
+        }
+
+        for (String enchantName : section.getKeys(false)) {
+            Enchantment enchantment = Enchantment.getByName(enchantName.toUpperCase(Locale.ENGLISH));
+            if (enchantment == null) {
+                continue;
+            }
+
+            item.addUnsafeEnchantment(enchantment, Math.max(1, section.getInt(enchantName, 1)));
+        }
+    }
+
+    private void clearTeamToolEnchantments(ItemStack item) {
+        if (item == null) {
+            return;
+        }
+
+        ConfigurationSection section = getUpgradeSection("tool-enchant");
+        ConfigurationSection enchantments = section == null ? null : section.getConfigurationSection("enchantments");
+        if (enchantments != null && !enchantments.getKeys(false).isEmpty()) {
+            for (String enchantName : enchantments.getKeys(false)) {
+                Enchantment enchantment = Enchantment.getByName(enchantName.toUpperCase(Locale.ENGLISH));
+                if (enchantment != null) {
+                    item.removeEnchantment(enchantment);
+                }
+            }
+            return;
+        }
+
+        item.removeEnchantment(Enchantment.DIG_SPEED);
+    }
+
+    private void applyTeamToolEnchantments(ItemStack item, ArenaTeam team) {
+        if (item == null || team == null || (!isPickaxe(item.getType()) && !isAxe(item.getType()))) {
+            return;
+        }
+
+        int tier = team.getToolEnchantTier();
+        if (tier <= 0) {
+            return;
+        }
+
+        ConfigurationSection section = getUpgradeSection("tool-enchant");
+        ConfigurationSection enchantments = section == null ? null : section.getConfigurationSection("enchantments");
+        if (enchantments != null && !enchantments.getKeys(false).isEmpty()) {
+            for (String enchantName : enchantments.getKeys(false)) {
+                Enchantment enchantment = Enchantment.getByName(enchantName.toUpperCase(Locale.ENGLISH));
+                if (enchantment == null) {
+                    continue;
+                }
+
+                List<Integer> levels = enchantments.getIntegerList(enchantName);
+                int configuredLevel = levels.isEmpty()
+                    ? enchantments.getInt(enchantName, tier)
+                    : levels.get(Math.min(levels.size() - 1, Math.max(0, tier - 1)));
+                if (configuredLevel > 0) {
+                    item.addUnsafeEnchantment(enchantment, configuredLevel);
+                }
+            }
+            return;
+        }
+
+        item.addUnsafeEnchantment(Enchantment.DIG_SPEED, tier);
     }
 
     private void clearSwords(PlayerInventory inventory) {
@@ -491,19 +968,185 @@ public class ShopManager {
             || material == Material.GOLD_SWORD;
     }
 
-    private String getCurrencyName(Material material) {
-        if (material == Material.IRON_INGOT) {
-            return "ferros";
+    private boolean isPickaxe(Material material) {
+        return material == Material.WOOD_PICKAXE
+            || material == Material.STONE_PICKAXE
+            || material == Material.GOLD_PICKAXE
+            || material == Material.IRON_PICKAXE
+            || material == Material.DIAMOND_PICKAXE;
+    }
+
+    private boolean isAxe(Material material) {
+        return material == Material.WOOD_AXE
+            || material == Material.STONE_AXE
+            || material == Material.GOLD_AXE
+            || material == Material.IRON_AXE
+            || material == Material.DIAMOND_AXE;
+    }
+
+    private int getToolTier(Arena arena, UUID uniqueId, String toolType) {
+        if (arena == null || uniqueId == null) {
+            return 0;
         }
-        if (material == Material.GOLD_INGOT) {
-            return "ouros";
+
+        return "axe".equals(toolType) ? arena.getAxeTier(uniqueId) : arena.getPickaxeTier(uniqueId);
+    }
+
+    private void setToolTier(Arena arena, UUID uniqueId, String toolType, int tier) {
+        if (arena == null || uniqueId == null) {
+            return;
         }
-        if (material == Material.DIAMOND) {
-            return "diamantes";
+
+        if ("axe".equals(toolType)) {
+            arena.setAxeTier(uniqueId, tier);
+            return;
         }
-        if (material == Material.EMERALD) {
-            return "esmeraldas";
+
+        arena.setPickaxeTier(uniqueId, tier);
+    }
+
+    private ConfigurationSection getToolTierSection(ConfigurationSection offerSection, int tier) {
+        if (offerSection == null || tier <= 0) {
+            return null;
         }
-        return material.name().toLowerCase();
+
+        ConfigurationSection tiers = offerSection.getConfigurationSection("tiers");
+        if (tiers == null) {
+            return null;
+        }
+
+        ConfigurationSection direct = tiers.getConfigurationSection(String.valueOf(tier));
+        if (direct != null) {
+            return direct;
+        }
+
+        for (String key : tiers.getKeys(false)) {
+            try {
+                if (Integer.parseInt(key) == tier) {
+                    return tiers.getConfigurationSection(key);
+                }
+            } catch (NumberFormatException ignored) {
+            }
+        }
+        return null;
+    }
+
+    private ConfigurationSection getUpgradeSection(String upgradeKey) {
+        if (upgradeKey == null || upgradeKey.trim().isEmpty()) {
+            return null;
+        }
+
+        ConfigurationSection upgrades = plugin.getConfig().getConfigurationSection("upgrade-shop.upgrades");
+        if (upgrades == null) {
+            return null;
+        }
+
+        ConfigurationSection direct = upgrades.getConfigurationSection(upgradeKey);
+        if (direct != null) {
+            return direct;
+        }
+
+        String normalized = normalizeUpgradeAction(upgradeKey);
+        for (String key : upgrades.getKeys(false)) {
+            ConfigurationSection section = upgrades.getConfigurationSection(key);
+            if (section == null) {
+                continue;
+            }
+
+            if (normalized.equals(normalizeUpgradeAction(key)) || normalized.equals(normalizeUpgradeAction(section.getString("action", key)))) {
+                return section;
+            }
+        }
+        return null;
+    }
+
+    private String normalizeUpgradeAction(String action) {
+        if (action == null) {
+            return "";
+        }
+
+        String normalized = action.trim().toLowerCase(Locale.ENGLISH).replace('_', '-').replace(' ', '-');
+        if ("maniacminer".equals(normalized)) {
+            return "maniac-miner";
+        }
+        if ("healpool".equals(normalized)) {
+            return "heal-pool";
+        }
+        return normalized;
+    }
+
+    private String resolveUpgradeAction(String upgradeKey) {
+        ConfigurationSection section = getUpgradeSection(upgradeKey);
+        return normalizeUpgradeAction(section == null ? upgradeKey : section.getString("action", upgradeKey));
+    }
+
+    private int defaultUpgradeMaxLevel(String upgradeKey) {
+        String normalized = resolveUpgradeAction(upgradeKey);
+        if ("sharpness".equals(normalized) || "heal-pool".equals(normalized)) {
+            return 1;
+        }
+        if ("protection".equals(normalized)) {
+            return 4;
+        }
+        if ("maniac-miner".equals(normalized)) {
+            return 2;
+        }
+        if ("tool-enchant".equals(normalized)) {
+            return 3;
+        }
+        return 1;
+    }
+
+    private int defaultUpgradeCost(ArenaTeam team, String upgradeKey) {
+        String normalized = resolveUpgradeAction(upgradeKey);
+        int currentLevel = getUpgradeLevel(team, upgradeKey);
+
+        if ("sharpness".equals(normalized)) {
+            return currentLevel >= 1 ? 0 : 4;
+        }
+        if ("protection".equals(normalized)) {
+            int[] costs = new int[] {2, 4, 8, 16};
+            return currentLevel >= costs.length ? 0 : costs[currentLevel];
+        }
+        if ("maniac-miner".equals(normalized)) {
+            int[] costs = new int[] {2, 4};
+            return currentLevel >= costs.length ? 0 : costs[currentLevel];
+        }
+        if ("tool-enchant".equals(normalized)) {
+            int[] costs = new int[] {2, 4, 6};
+            return currentLevel >= costs.length ? 0 : costs[currentLevel];
+        }
+        if ("heal-pool".equals(normalized)) {
+            return currentLevel >= 1 ? 0 : 1;
+        }
+        return 0;
+    }
+
+    private Material parseMaterial(String raw, Material fallback) {
+        if (raw == null || raw.trim().isEmpty()) {
+            return fallback;
+        }
+
+        try {
+            return Material.valueOf(raw.trim().toUpperCase(Locale.ENGLISH));
+        } catch (IllegalArgumentException exception) {
+            return fallback;
+        }
+    }
+
+    private String cleanName(String text) {
+        return org.bukkit.ChatColor.stripColor(ChatUtil.color(text == null ? "" : text));
+    }
+
+    private Map<String, String> placeholders(String... values) {
+        Map<String, String> placeholders = new HashMap<String, String>();
+        if (values == null) {
+            return placeholders;
+        }
+
+        for (int index = 0; index + 1 < values.length; index += 2) {
+            placeholders.put(values[index], values[index + 1]);
+        }
+        return placeholders;
     }
 }
