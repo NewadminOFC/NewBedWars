@@ -1,18 +1,23 @@
 # NewBedWars
 
-Plugin de BedWars para `Minecraft 1.8.8` com setup totalmente in-game, arquitetura modular e foco atual em partidas `1v1`.
+Plugin de BedWars para `Minecraft 1.8.8` com setup totalmente in-game, arquitetura modular, suporte a varios modos e foco em colocar uma arena para funcionar sem depender de edicao manual de arquivo.
 
-O projeto foi pensado para evitar o setup manual chato por arquivo e para permitir que o mesmo mapa-base gere varias partidas por meio de clones runtime, sem destruir o mundo original.
+O projeto foi pensado para:
+
+- reaproveitar um mesmo mapa-base varias vezes por meio de clones runtime
+- proteger o mundo original da arena
+- deixar o setup inteiro dentro do jogo
+- permitir filas por modo com NPCs separados
+- manter configs, mensagens, scoreboard e loja altamente configuraveis
 
 ## Sumario
 
 - [Visao Geral](#visao-geral)
-- [Status Atual](#status-atual)
+- [Modos Suportados](#modos-suportados)
 - [Principais Recursos](#principais-recursos)
 - [Compatibilidade](#compatibilidade)
 - [Dependencias](#dependencias)
 - [Instalacao](#instalacao)
-- [Estrutura de Pastas no Servidor](#estrutura-de-pastas-no-servidor)
 - [Inicio Rapido](#inicio-rapido)
 - [Comandos](#comandos)
 - [Permissoes](#permissoes)
@@ -20,75 +25,75 @@ O projeto foi pensado para evitar o setup manual chato por arquivo e para permit
 - [Fluxo da Partida](#fluxo-da-partida)
 - [NPCs](#npcs)
 - [Lojas, Itens e Upgrades](#lojas-itens-e-upgrades)
-- [Geradores](#geradores)
+- [Geradores e Eventos](#geradores-e-eventos)
 - [Scoreboard e Tablist](#scoreboard-e-tablist)
 - [Arquivos e Persistencia](#arquivos-e-persistencia)
-- [Licenca](#licenca)
 - [Estrutura do Projeto](#estrutura-do-projeto)
 - [Como Compilar](#como-compilar)
 - [Troubleshooting](#troubleshooting)
 - [Limitacoes Atuais](#limitacoes-atuais)
-- [Roadmap Sugerido](#roadmap-sugerido)
+- [Licenca](#licenca)
+- [Resumo Rapido](#resumo-rapido)
 
 ## Visao Geral
 
-`NewBedWars` e uma base completa para BedWars 1.8.8 feita em `Java + Spigot API 1.8.8`, com:
+`NewBedWars` e uma base completa de BedWars 1.8.8 feita em `Java + Spigot API 1.8.8`, com:
 
-- configuracao de arena feita dentro do jogo
-- menus de setup para times, spawns, cama, lojas, forjas e regioes
+- setup de arena 100% in-game
+- multiplas arenas carregadas ao mesmo tempo
+- suporte a varios modos de jogo
+- filas por NPC e menu de selecao de arena
+- lojas e upgrades configuraveis
+- respawn estilo BedWars com espectador temporario
+- anti-void por arena
+- clones runtime para reaproveitar o mesmo template
+- scoreboard e tablist dinamicas
 - persistencia em arquivos `YML`
-- gerenciamento de multiplas arenas
-- clones de mapa para reutilizar o mesmo template varias vezes
-- scoreboard, tablist, mensagens e NPCs configuraveis
-- arquitetura separada por `manager`, `listener`, `menu`, `arena`, `setup`, `npc`, `util` e `command`
 
-O foco da base e entregar um plugin que voce consiga:
+O objetivo da base e simples: voce instala, coloca um mapa, cria a arena, configura tudo dentro do jogo e ja consegue testar a partida.
 
-1. instalar no servidor
-2. colocar um mapa pronto
-3. criar a arena
-4. configurar tudo sem editar arquivo manualmente
-5. colocar para jogar
+## Modos Suportados
 
-## Status Atual
+Hoje o plugin suporta estes modos:
 
-O projeto nasceu com a ideia de SOLO, mas o estado atual do gameplay esta focado em `1v1`.
+| Modo | Times ativos | Jogadores por time | Maximo de jogadores |
+| --- | --- | --- | --- |
+| `1v1` | `RED`, `BLUE` | `1` | `2` |
+| `2v2` | `RED`, `BLUE` | `2` | `4` |
+| `3v3` | `RED`, `BLUE` | `3` | `6` |
+| `4v4` | `RED`, `BLUE` | `4` | `8` |
+| `solo` | `RED`, `BLUE`, `GREEN`, `YELLOW`, `CYAN`, `PINK`, `GRAY`, `WHITE` | `1` | `8` |
+| `dupla` | `RED`, `BLUE`, `GREEN`, `YELLOW`, `CYAN`, `PINK`, `GRAY`, `WHITE` | `2` | `16` |
+| `trio` | `RED`, `BLUE`, `GREEN`, `YELLOW` | `3` | `12` |
+| `quarteto` | `RED`, `BLUE`, `GREEN`, `YELLOW` | `4` | `16` |
 
-Na pratica, hoje o fluxo principal funciona assim:
+Observacoes importantes:
 
-- capacidade padrao de `2 jogadores`
-- times ativos na partida: `RED` e `BLUE`
-- selecao de cor no lobby de espera como preferencia
-- definicao final dos times no inicio da partida
-- scoreboard/tablist voltadas para `1v1`
-
-A estrutura continua preparada para expansao futura, mas a experiencia pronta hoje e `1v1`.
+- o setup mostra apenas os times ativos do modo atual
+- a validacao da arena considera somente os times necessarios para aquele modo
+- a scoreboard encolhe automaticamente quando o modo usa menos times
+- cada modo pode ter seu proprio NPC de fila
 
 ## Principais Recursos
 
 - setup de arena 100% in-game
-- `/bw setup <arena>` com teleporte automatico para o mundo da arena
-- spawn de espera, waiting room e configuracao por menus
-- configuracao por time com:
-  - spawn
-  - cama
-  - bau do time
-  - ender chest
-  - geradores
-  - loja
-  - melhorias
-  - regiao da ilha
-  - protecao inicial
-- hologramas de setup para mostrar tudo que ja foi salvo
-- limpeza rapida de elementos do setup por clique direito no menu
-- clones runtime infinitos do mapa-base
-- protecao do mapa original
-- respawn sem tela de morte
-- TNT e fireball customizadas
-- NPC principal com `Citizens`
-- NPCs de `Loja` e `Melhorias`
-- scoreboard configuravel por estado
-- tablist configuravel somente durante a partida
+- `/bw create <arena> [world] [mode]` para criar arenas direto no modo desejado
+- `/bw mode <arena> <modo>` para trocar o modo depois
+- spawn de espera, area de espera, times, cama, baus, lojas, geradores e regioes configurados por menu
+- itens de setup entregues somente quando realmente sao necessarios
+- spawns de espera e de time definidos clicando no bloco
+- ferramentas `/pos1` e `/pos2` para regioes com dicas no proprio setup
+- anti-void salvo por arena usando o `Y` configurado no setup
+- clima travado sem chuva e sempre de dia nas arenas
+- clones runtime infinitos a partir do mesmo mapa-base
+- respawn sem tela de morte, com espectador temporario
+- void tratado como morte de partida apenas durante `INGAME`
+- NPCs de fila por modo com `Citizens`
+- NPCs de loja e melhorias criados a partir do setup
+- hologramas de setup e hologramas de baus configuraveis
+- loja de itens e loja de melhorias puxadas da `config.yml`
+- scoreboard atualizando a cada `0.5s`
+- tablist somente durante a partida
 - mensagens configuraveis em `messages.yml`
 
 ## Compatibilidade
@@ -104,29 +109,31 @@ Dependencia obrigatoria:
 
 - `Citizens`
 
-O plugin usa `Citizens` para o NPC principal de entrada e para NPCs runtime. Sem `Citizens`, o plugin nao inicia, porque ele esta como `depend` no [`plugin.yml`](C:/Users/picha/Documents/backup/NewBedWars/src/main/resources/plugin.yml).
+O plugin usa `Citizens` para:
+
+- NPCs de fila por modo
+- NPC da loja de itens
+- NPC da loja de melhorias
+
+Sem `Citizens`, o plugin nao inicia, porque a dependencia esta declarada em [`plugin.yml`](src/main/resources/plugin.yml).
 
 ## Instalacao
 
 1. Coloque o `Citizens.jar` em `plugins/`.
 2. Coloque o jar do `NewBedWars` em `plugins/`.
-3. Inicie o servidor.
-4. Configure o lobby com `/bw setlobby`.
-5. Coloque pelo menos um mapa de arena na raiz do servidor.
-6. Crie e configure a arena com `/bw create` e `/bw setup`.
+3. Coloque o mapa da arena na raiz do servidor.
+4. Inicie o servidor.
+5. Defina o lobby principal com `/bw setlobby`.
+6. Crie e configure as arenas com `/bw create` e `/bw setup`.
 
-## Estrutura de Pastas no Servidor
-
-O mapa da arena nao vai dentro do plugin. Ele deve ficar como um mundo normal na raiz do servidor.
-
-Exemplo:
+Exemplo de estrutura no servidor:
 
 ```text
 server/
   world/
   world_nether/
   world_the_end/
-  BedwarsTreasure/
+  [MAPABEDWARS]/
   plugins/
     Citizens/
     NewBedWars/
@@ -135,72 +142,96 @@ server/
       arenas/
 ```
 
-Exemplo do que deve existir dentro do mapa:
-
-```text
-BedwarsTreasure/
-  level.dat
-  region/
-  data/
-```
-
 ## Inicio Rapido
 
-### 1. Coloque o mapa pronto no servidor
+### 1. Coloque o mapa da arena na raiz do servidor
 
-Copie a pasta do mapa para a raiz do servidor:
-
-```text
-server/BedwarsTreasure/
-```
-
-### 2. Crie a arena
-
-Se voce estiver dentro do mundo da arena:
+Exemplo:
 
 ```text
-/bw create BedwarsTreasure
+server/[MAPABEDWARS]/
 ```
 
-Ou informando o mundo explicitamente:
-
-```text
-/bw create BedwarsTreasure BedwarsTreasure
-```
-
-### 3. Entre no setup
-
-```text
-/bw setup BedwarsTreasure
-```
-
-### 4. Configure o lobby principal
-
-No hub:
+### 2. Defina o lobby principal
 
 ```text
 /bw setlobby
 ```
 
-Esse comando tambem marca o mundo do lobby para:
+Esse comando salva o lobby principal e tambem aplica regras no mundo do lobby, como controle de clima e horario.
 
-- nao spawnar mobs naturalmente
-- ficar sempre de dia
-- manter o clima controlado pelo plugin
+### 3. Crie a arena
 
-### 5. Crie o NPC principal
+Usando o mundo atual:
 
 ```text
+/bw create [NOMEPARAARENA] solo
+```
+
+Informando o mundo explicitamente:
+
+```text
+/bw create [NOMEPARAARENA] [MAPABEDWARS] solo
+```
+
+Se preferir criar primeiro e trocar depois:
+
+```text
+/bw create [NOMEPARAARENA] [MAPABEDWARS]
+/bw mode [NOMEPARAARENA] quarteto
+```
+
+### 4. Entre no setup
+
+```text
+/bw setup [NOMEPARAARENA]
+```
+
+### 5. Configure os pontos gerais da arena
+
+No menu principal, configure:
+
+- spawn de espera
+- area de espera
+- anti-void
+- geradores globais de diamante
+- geradores globais de esmeralda
+
+### 6. Configure os times ativos do modo
+
+Para cada time necessario no modo atual, configure:
+
+- spawn do time
+- cama
+- bau do time
+- ender chest
+- gerador de ferro
+- gerador de ouro
+- loja de itens
+- loja de melhorias
+- regiao da ilha
+- protecao inicial
+
+Depois confirme cada time pelo proprio menu.
+
+### 7. Finalize a arena
+
+Quando tudo estiver pronto:
+
+- abra o menu principal
+- clique em `Finalizar`
+- confirme a validacao
+
+### 8. Crie os NPCs de fila
+
+Exemplos:
+
+```text
+/bw npc 1v1
 /bw npc solo
+/bw npc dupla Notch
+/bw npc quarteto
 ```
-
-Ou com skin customizada:
-
-```text
-/bw npc solo Notch
-```
-
-O comando `solo` continua existindo por compatibilidade, mas o modo atual do gameplay esta em `1v1`.
 
 ## Comandos
 
@@ -208,16 +239,16 @@ O comando `solo` continua existindo por compatibilidade, mas o modo atual do gam
 
 | Comando | Descricao |
 | --- | --- |
-| `/bw create <arena> [world]` | Cria uma arena usando o mundo atual ou o mundo informado |
-| `/bw delete <arena>` | Remove a arena e seu arquivo YML |
-| `/bw list` | Lista arenas carregadas |
-| `/bw setup <arena>` | Entra no modo setup e teleporta para o mundo da arena |
+| `/bw create <arena> [world] [mode]` | Cria uma arena usando o mundo atual ou o mundo informado |
+| `/bw delete <arena>` | Remove a arena e o arquivo YML dela |
+| `/bw list` | Lista as arenas configuradas |
+| `/bw mode <arena> <modo>` | Troca o modo da arena |
+| `/bw setup <arena>` | Entra no modo setup da arena |
 | `/bw setlobby` | Salva o lobby principal |
-| `/bw join <arena>` | Entra na arena/template informado |
-| `/bw leave` | Sai da arena atual |
+| `/bw join <arena>` | Entra na arena informada |
+| `/bw leave` | Sai da partida atual |
 | `/bw reload` | Recarrega `config.yml`, `messages.yml` e arenas |
-| `/bw npc solo [skin]` | Cria o NPC principal do BedWars |
-| `/bw npc 1v1 [skin]` | Alias do NPC principal para o modo atual |
+| `/bw npc <modo> [skin]` | Cria um NPC de fila para o modo informado |
 | `/bw npc skin <id> <skin>` | Troca a skin de um NPC BedWars |
 | `/bw npc remove <id>` | Remove um NPC BedWars |
 
@@ -225,85 +256,94 @@ O comando `solo` continua existindo por compatibilidade, mas o modo atual do gam
 
 | Comando | Descricao |
 | --- | --- |
-| `/lobby` | Sai da partida/fila e volta para o lobby principal |
+| `/lobby` | Sai da fila ou da partida e volta para o lobby principal |
+
+### Modos aceitos nos comandos
+
+Os comandos aceitam:
+
+- `1v1`
+- `2v2`
+- `3v3`
+- `4v4`
+- `solo`
+- `dupla`
+- `trio`
+- `quarteto`
 
 ## Permissoes
 
 | Permissao | Descricao | Default |
 | --- | --- | --- |
 | `newbedwars.admin` | Administracao completa do plugin | `op` |
-| `newbedwars.teamselect` | Permite usar o seletor de preferencia de time | `op` |
+| `newbedwars.teamselect` | Permite escolher o time no lobby de espera | `op` |
 
 ## Guia Completo de Setup
 
-O setup foi desenhado para ser intuitivo e nao depender de editar o arquivo da arena manualmente.
+O setup foi desenhado para ser guiado. A ideia e voce nao precisar editar arquivo manualmente para deixar uma arena funcional.
 
 ### O que acontece ao usar `/bw setup <arena>`
 
 - seu inventario e armadura atuais sao salvos
 - voce e teleportado para o mundo da arena
-- voce recebe os itens de setup
-- os hologramas da arena aparecem para mostrar o que ja esta configurado
-- o menu principal da arena pode ser aberto a qualquer momento
+- os hologramas da arena aparecem
+- voce recebe a bussola para abrir o menu principal
+- os itens auxiliares aparecem somente quando uma acao precisa deles
 
 Quando o setup termina:
 
-- o inventario original do jogador volta
+- seu inventario original volta
 - o modo setup e encerrado
-- o jogador volta ao lobby principal
+- voce e teleportado para o lobby principal, se ele estiver configurado
 
-### Itens iniciais do setup
+### Como o setup funciona hoje
 
-| Item | Funcao |
-| --- | --- |
-| `Nether Star` | Salvar o spawn de espera da arena |
-| `Slime Ball` | Marcar `pos1` usando o pe do jogador |
-| `Magma Cream` | Marcar `pos2` usando o pe do jogador |
-| `Compass` | Abrir o menu principal do setup |
+O plugin usa dois tipos de configuracao:
 
-### Filosofia do setup
+- pontos, como `spawn`, `cama`, `bau`, `ender chest`, `gerador` e `loja`
+- regioes, como `area de espera`, `ilha do time` e `protecao inicial`
 
-O plugin evita depender de clique em bloco para tudo. Regioes podem ser marcadas pelo pe do jogador, o que ajuda quando:
+### Configurando pontos
 
-- nao existe bloco exatamente onde voce quer marcar
-- voce quer delimitar uma ilha no ar
-- a protecao inicial precisa ser marcada no espaco
+Pontos funcionam assim:
 
-### Como marcar uma regiao
+- spawns de espera e de time sao salvos clicando em um bloco
+- o plugin salva a localizacao em cima do bloco clicado
+- cama, baus, lojas e geradores tambem sao salvos por interacao no local
+- o anti-void da arena salva o `Y` atual do jogador
 
-1. Abra o menu correspondente.
-2. Escolha a opcao da regiao.
-3. Va ate o primeiro ponto.
-4. Use o item `&a/pos1`.
-5. Va ate o segundo ponto.
-6. Use o item `&c/pos2`.
+### Configurando regioes
 
-Isso vale para:
+Quando uma regiao precisa ser marcada:
 
-- sala de espera
-- ilha do time
-- protecao inicial
+1. abra a opcao no menu
+2. o plugin entrega os itens de `pos1` e `pos2`
+3. use `pos1` no primeiro ponto
+4. use `pos2` no segundo ponto
+
+O plugin tambem envia dicas no chat para lembrar para que servem `pos1` e `pos2`.
 
 ### Menu principal da arena
 
 No menu principal voce configura:
 
 - spawn de espera
-- area da sala de espera
-- time vermelho
-- time azul
+- area de espera
+- anti-void
+- modo atual da arena
+- times ativos do modo
 - geradores globais de diamante
 - geradores globais de esmeralda
 - finalizacao da arena
 
-Regra de interacao:
+Regras de clique:
 
 - clique esquerdo: configurar
-- clique direito: limpar o que ja estava salvo
+- clique direito: limpar
 
 ### Menu de configuracao do time
 
-Cada time possui menu proprio com setup para:
+Cada time ativo do modo possui um menu proprio com:
 
 - spawn do time
 - cama
@@ -316,137 +356,111 @@ Cada time possui menu proprio com setup para:
 - regiao da ilha
 - protecao inicial
 - preview do progresso
-- confirmar time
-- voltar
-
-Regra de interacao:
-
-- clique esquerdo: configurar
-- clique direito: apagar e deixar pendente de novo
-
-### Hologramas do setup
-
-Enquanto a arena esta sendo configurada, o plugin mostra hologramas indicando onde cada coisa foi salva.
-
-Exemplos:
-
-- `Waiting Spawn`
-- `Waiting Region Pos1`
-- `Waiting Region Pos2`
-- `Spawn Vermelho`
-- `Cama Azul`
-- `Bau Vermelho`
-- `Ender Chest Azul`
-- `Loja`
-- `Melhorias`
-- `Diamante`
-- `Esmeralda`
-
-Quando a partida comeca, esses hologramas de setup somem automaticamente.
+- confirmacao do time
 
 ### Validacao da arena
 
-Uma arena so e marcada como pronta quando o plugin consegue validar o minimo necessario.
+Uma arena so fica pronta quando o plugin valida o minimo necessario para o modo atual.
 
-Hoje, para o fluxo `1v1`, isso inclui:
+Na pratica, isso envolve:
 
 - mundo valido
 - spawn de espera
 - area de espera
-- time vermelho completo e confirmado
-- time azul completo e confirmado
+- todos os times ativos do modo devidamente configurados e confirmados
 - pelo menos um gerador global de diamante
 - pelo menos um gerador global de esmeralda
 
+O numero de times exigidos muda conforme o modo escolhido.
+
 ## Fluxo da Partida
 
-### Entrada na arena
+### Entrada na fila
 
-Ao entrar na fila/arena:
+Ao entrar na arena:
 
 - o jogador vai para a sala de espera
-- recebe o item de seletor de time
+- recebe o seletor de time
 - recebe a cama para sair da fila
-
-### Selecao de time no pre-game
-
-O seletor no waiting lobby funciona como preferencia de time.
-
-Fluxo:
-
-- o jogador escolhe uma cor
-- essa escolha e salva como preferencia
-- no inicio da partida o plugin tenta respeitar a preferencia
-- quem nao escolheu vai para time aleatorio
-- se houver conflito, o plugin resolve automaticamente no start
-
-Sem permissao:
-
-- o item aparece
-- o clique nao abre a selecao
-- o plugin envia uma mensagem configuravel no `config.yml`
 
 ### Inicio automatico
 
 Quando o minimo de jogadores e atingido:
 
-- countdown automatico com base no `config.yml`
-- preparacao do clone runtime do mapa
-- distribuicao final dos times
-- teleporte para o spawn correto do time
-- limpeza da waiting room
+- o countdown comeca
+- o countdown e mostrado principalmente no chat
+- o plugin prepara um clone runtime do mapa
+- os jogadores sao distribuidos nos times
+- cada jogador vai para o spawn do seu time
+- a waiting room some visualmente do fluxo da partida
 
-### Respawn sem tela de morte
+### Regras de mundo da arena
 
-O plugin usa fluxo de respawn no estilo BedWars:
+As arenas-template e os clones runtime ficam com:
 
-- o jogador morre
-- nao fica preso em tela de morte tradicional
-- entra temporariamente em espectador
-- apos o tempo configurado, volta ao spawn do time se a cama ainda existir
+- sempre de dia
+- sem chuva
 
-Se a cama estiver destruida:
+Isso vale desde a criacao da arena, nao so quando a partida comeca.
 
-- a proxima morte elimina o jogador
-- ele vira espectador
-- quando todo o time acaba, o time e eliminado
+### Morte, void e respawn
 
-### Sair da partida
+Durante `INGAME`:
 
-Se o jogador:
+- cair no void conta como morte de partida
+- o jogador entra em espectador temporario
+- se a cama do time ainda existir, ele volta depois do tempo de respawn configurado
+- se a cama tiver sido destruida, a morte passa a ser final
 
-- usar `/lobby`
-- sair do servidor
+O tempo de respawn padrao hoje e `5 segundos`.
 
-o plugin trata isso como abandono da partida, atualiza o estado da arena e retorna o jogador para o mundo do lobby quando aplicavel.
+### Anti-void
+
+O anti-void:
+
+- e configurado por arena no setup
+- usa o `Y` salvo para aquela arena
+- so atua durante a partida
+- nao afeta lobby, setup ou outros mundos fora do BedWars
+
+### Fim da partida
+
+Quando a partida termina:
+
+- o plugin entra no estado `ENDING`
+- os jogadores continuam no mapa por alguns segundos
+- todo o inventario e limpo
+- sobra apenas a cama para sair
+- `/lobby` continua funcionando
 
 ## NPCs
 
-### NPC principal
+### NPCs de fila
 
-Criado por:
-
-```text
-/bw npc solo [skin]
-```
-
-Ou:
+Voce pode criar um NPC separado para cada modo:
 
 ```text
-/bw npc 1v1 [skin]
+/bw npc 1v1
+/bw npc 2v2
+/bw npc 3v3
+/bw npc 4v4
+/bw npc solo
+/bw npc dupla
+/bw npc trio
+/bw npc quarteto
 ```
 
 Recursos:
 
 - skin customizavel
 - holograma configuravel
-- menu de fila
-- menu de escolha de arena
-- suporte a Citizens
+- contador de jogadores no holograma
+- menu de fila do modo correto
+- menu de selecao de arena filtrado por modo
 
 ### NPC de loja
 
-Configurado automaticamente no setup de cada time.
+Configurado automaticamente no setup do time.
 
 Visual padrao:
 
@@ -455,7 +469,7 @@ Visual padrao:
 
 ### NPC de melhorias
 
-Configurado automaticamente no setup de cada time.
+Configurado automaticamente no setup do time.
 
 Visual padrao:
 
@@ -464,70 +478,102 @@ Visual padrao:
 
 Observacao:
 
-- ao iniciar a partida ficam apenas os hologramas dos NPCs
-- hologramas de setup e de outros auxiliares sao removidos
+- ao iniciar a partida, o plugin remove os hologramas auxiliares de setup
+- os hologramas dos NPCs de loja continuam
 
 ## Lojas, Itens e Upgrades
 
+As lojas foram montadas para serem altamente configuraveis por `config.yml`.
+
 ### Loja de itens
 
-A base atual inclui itens comuns de BedWars, como:
+A loja atual suporta categorias como:
 
 - blocos
-- espadas
-- armaduras
+- combate
 - ferramentas
-- arco e flechas
-- perola
+- distancia
+- pocoes
+- utilidades
+
+Entre os itens ja presentes na base estao:
+
+- la, madeira, vidro anti-explosao e outros blocos
+- espadas e armaduras
+- picaretas com sistema de evolucao
+- machados com sistema de evolucao
+- arcos e flechas
 - TNT
 - fireball
+- perola do fim
+- maca dourada
+- balde de agua
+- golem de ferro
+- ovo das pontes
+- percevejo
+- pocoes de agilidade, super pulo e invisibilidade
 
 ### Espadas
 
 Regras atuais:
 
-- o jogador sempre nasce com espada de madeira
-- a espada pode ser movida dentro do proprio inventario
+- o jogador nasce com espada de madeira
+- ela pode ser movida no inventario
 - nao pode ser dropada
-- nao pode ser colocada em baus ou containers
-- upgrades melhoram a espada atual independentemente do slot
-- ao morrer, o jogador volta para a espada de madeira
+- nao pode ser colocada em baus
+- upgrades de espada afetam a espada do jogador
+
+### Picareta e machado
+
+Regras atuais:
+
+- funcionam por progressao de tiers na loja
+- nao quebram durante a partida
+- o efeito visual de inquebravel foi removido
 
 ### Armaduras
 
 Regras atuais:
 
-- o jogador nasce com couro na cor do time
-- upgrades trocam principalmente calca e bota
+- o jogador nasce com couro tingido na cor do time
+- compras de armadura substituem o tier do jogador
 - a armadura nao pode ser removida manualmente durante a partida
+
+### Vidro anti-explosao
+
+O vidro anti-explosao:
+
+- pode ser comprado na loja
+- resiste a explosoes de TNT e fireball
+- pode ser colocado sobre a cama usando `shift + clique direito`
 
 ### Bau do time
 
-Comportamento durante a partida:
+Durante a partida:
 
 - clique esquerdo: guarda automaticamente o item da mao
 - clique direito: abre o bau do time
 
 ### Ender chest
 
-Comportamento durante a partida:
+Durante a partida:
 
 - clique esquerdo: guarda automaticamente o item da mao no ender chest do jogador
 - clique direito: abre o ender chest do jogador
-- qualquer ender chest configurado da arena pode ser usado
 
 ### Loja de melhorias
 
-A base atual ja possui upgrades como:
+A base atual ja inclui upgrades como:
 
 - espadas afiadas
 - protecao
 - minerador maniaco
 - piscina de cura
+- melhorias de ferramenta
 
-## Geradores
+## Geradores e Eventos
 
-Tipos presentes no plugin:
+Tipos de gerador presentes:
 
 - `IRON`
 - `GOLD`
@@ -536,39 +582,27 @@ Tipos presentes no plugin:
 
 Distribuicao:
 
-- `IRON` e `GOLD` sao normalmente configurados por time
-- `DIAMOND` e `EMERALD` sao globais na arena
+- `IRON` e `GOLD` normalmente sao configurados por time
+- `DIAMOND` e `EMERALD` sao globais da arena
 
-Tudo e salvo em YML e relido quando o servidor reinicia.
+Eventos atuais configuraveis em [`config.yml`](src/main/resources/config.yml):
 
-## Fireball e TNT
-
-### Fireball
-
-O plugin possui fireball customizada com:
-
-- ativacao por clique direito
-- suporte a uso no ar
-- dano removido
-- knockback customizado
-- velocidade configuravel
-
-### TNT
-
-O plugin possui TNT com:
-
-- colocacao como `TNTPrimed`
-- contador visual configuravel
-- cores do contador por porcentagem restante
-- knockback customizado
-- comportamento de TNT chain
-- empurrao ajustado para jogador e para outras TNTs
+- upgrade de diamante
+- destruicao global de camas
 
 ## Scoreboard e Tablist
 
 ### Scoreboard
 
-A scoreboard e configuravel por estado:
+A scoreboard atual:
+
+- usa titulo fixo `&b&lBEDWARS`
+- atualiza a cada `0.5s`
+- diminui automaticamente quando o modo usa menos times
+- mostra data/hora, proximo evento e estado dos times durante a partida
+- usa `newplugins.net` na linha final configurada
+
+Estados suportados:
 
 - lobby
 - waiting
@@ -576,25 +610,14 @@ A scoreboard e configuravel por estado:
 - ingame
 - ending
 
-Ela pode mostrar, por exemplo:
-
-- nome da arena
-- modo
-- jogadores
-- proximo evento
-- status das camas
-- linhas dos times
-- vencedor
-
 ### Tablist
 
-A tablist atual:
+A tablist:
 
-- e totalmente configuravel
-- aparece apenas quando a partida comeca
-- fica desligada no lobby e no waiting
-- suporta header e footer com placeholders
-- suporta prefixos/ordem por time
+- e configuravel por arquivo
+- aparece apenas durante a partida
+- mostra header, footer, arena, status e time do jogador
+- ordena jogadores por estado e por time
 
 ## Arquivos e Persistencia
 
@@ -619,10 +642,12 @@ Cada arena salva, no minimo:
 
 - nome
 - mundo
+- modo
 - status de pronta
 - estado da arena
 - waiting spawn
 - waiting region
+- anti-void-y
 - dados dos times
 - spawns
 - cama
@@ -636,30 +661,14 @@ Cada arena salva, no minimo:
 O plugin usa fallback para mensagens padrao do jar. Isso ajuda quando:
 
 - o servidor tem um `messages.yml` antigo
-- voce atualiza o plugin e surgem novas chaves
-
-Ou seja, faltou uma chave no arquivo do servidor e a chance de quebrar tudo diminui bastante.
+- o plugin ganhou chaves novas
 
 ### Sobre o `config.yml`
 
-O Bukkit nao sobrescreve tudo automaticamente ao atualizar plugin. Entao, se uma secao nova nao aparecer no servidor:
+O Bukkit nao sobrescreve o arquivo inteiro ao atualizar plugin. Se alguma secao nova nao aparecer:
 
-1. copie a secao nova manualmente do projeto
-2. ou apague o arquivo antigo para o plugin gerar um novo
-
-## Licenca
-
-Este projeto usa uma licenca propria em portugues, disponivel em [LICENSE](C:/Users/picha/Documents/backup/NewBedWars/LICENSE).
-
-Em resumo:
-
-- voce pode usar o plugin normalmente
-- voce pode distribuir copias nao modificadas
-- voce pode fazer integracoes externas, addons, wrappers e automacoes
-- voce nao pode modificar o codigo-fonte do projeto sem permissao
-- voce nao pode redistribuir jar ou source alterado sem permissao
-
-Se quiser termos diferentes, permissao comercial ou autorizacao para modificar e redistribuir, o contato deve ser feito diretamente com o autor.
+1. copie manualmente a secao nova do projeto
+2. ou apague o arquivo antigo para o plugin gerar outro
 
 ## Estrutura do Projeto
 
@@ -678,68 +687,17 @@ src/main/java/n/plugins/newbedwars/
   util/
 ```
 
-### Classe principal
+Arquivos importantes para leitura:
 
-- [`NewBedWars.java`](C:/Users/picha/Documents/backup/NewBedWars/src/main/java/n/plugins/newbedwars/NewBedWars.java)
-
-Responsabilidades:
-
-- bootstrap do plugin
-- registro de managers
-- registro de listeners
-- registro de comandos
-- carga de arquivos
-
-### Managers
-
-- [`ArenaManager.java`](C:/Users/picha/Documents/backup/NewBedWars/src/main/java/n/plugins/newbedwars/manager/ArenaManager.java): CRUD e persistencia das arenas
-- [`GameManager.java`](C:/Users/picha/Documents/backup/NewBedWars/src/main/java/n/plugins/newbedwars/manager/GameManager.java): fluxo da partida, entrada, start, morte, respawn, eliminacao e fim
-- [`GeneratorManager.java`](C:/Users/picha/Documents/backup/NewBedWars/src/main/java/n/plugins/newbedwars/manager/GeneratorManager.java): geradores e drops
-- [`HologramManager.java`](C:/Users/picha/Documents/backup/NewBedWars/src/main/java/n/plugins/newbedwars/manager/HologramManager.java): hologramas runtime
-- [`LobbyManager.java`](C:/Users/picha/Documents/backup/NewBedWars/src/main/java/n/plugins/newbedwars/manager/LobbyManager.java): lobby principal e regras do mundo do lobby
-- [`MenuManager.java`](C:/Users/picha/Documents/backup/NewBedWars/src/main/java/n/plugins/newbedwars/manager/MenuManager.java): controle das GUIs
-- [`MessageManager.java`](C:/Users/picha/Documents/backup/NewBedWars/src/main/java/n/plugins/newbedwars/manager/MessageManager.java): mensagens configuraveis
-- [`NpcManager.java`](C:/Users/picha/Documents/backup/NewBedWars/src/main/java/n/plugins/newbedwars/manager/NpcManager.java): NPC principal, NPCs de loja e hologramas associados
-- [`ScoreboardManager.java`](C:/Users/picha/Documents/backup/NewBedWars/src/main/java/n/plugins/newbedwars/manager/ScoreboardManager.java): scoreboard e tablist
-- [`SetupManager.java`](C:/Users/picha/Documents/backup/NewBedWars/src/main/java/n/plugins/newbedwars/manager/SetupManager.java): todo o fluxo de setup
-- [`ShopManager.java`](C:/Users/picha/Documents/backup/NewBedWars/src/main/java/n/plugins/newbedwars/manager/ShopManager.java): compras, upgrades, espada, armadura e efeitos
-- [`TeamManager.java`](C:/Users/picha/Documents/backup/NewBedWars/src/main/java/n/plugins/newbedwars/manager/TeamManager.java): times, atribuicao e estado de cama/eliminacao
-- [`WorldCloneManager.java`](C:/Users/picha/Documents/backup/NewBedWars/src/main/java/n/plugins/newbedwars/manager/WorldCloneManager.java): clones runtime e limpeza
-
-### Listeners
-
-- [`SetupInteractListener.java`](C:/Users/picha/Documents/backup/NewBedWars/src/main/java/n/plugins/newbedwars/listener/SetupInteractListener.java)
-- [`NpcListener.java`](C:/Users/picha/Documents/backup/NewBedWars/src/main/java/n/plugins/newbedwars/listener/NpcListener.java)
-- [`InventoryListener.java`](C:/Users/picha/Documents/backup/NewBedWars/src/main/java/n/plugins/newbedwars/listener/InventoryListener.java)
-- [`GamePlayerListener.java`](C:/Users/picha/Documents/backup/NewBedWars/src/main/java/n/plugins/newbedwars/listener/GamePlayerListener.java)
-- [`GameItemListener.java`](C:/Users/picha/Documents/backup/NewBedWars/src/main/java/n/plugins/newbedwars/listener/GameItemListener.java)
-- [`GameBlockListener.java`](C:/Users/picha/Documents/backup/NewBedWars/src/main/java/n/plugins/newbedwars/listener/GameBlockListener.java)
-
-### Menus
-
-- [`SetupMainMenu.java`](C:/Users/picha/Documents/backup/NewBedWars/src/main/java/n/plugins/newbedwars/menu/SetupMainMenu.java)
-- [`TeamSetupMenu.java`](C:/Users/picha/Documents/backup/NewBedWars/src/main/java/n/plugins/newbedwars/menu/TeamSetupMenu.java)
-- [`SetupConfirmMenu.java`](C:/Users/picha/Documents/backup/NewBedWars/src/main/java/n/plugins/newbedwars/menu/SetupConfirmMenu.java)
-- [`SetupNpcMenu.java`](C:/Users/picha/Documents/backup/NewBedWars/src/main/java/n/plugins/newbedwars/menu/SetupNpcMenu.java)
-- [`SoloQueueMenu.java`](C:/Users/picha/Documents/backup/NewBedWars/src/main/java/n/plugins/newbedwars/menu/SoloQueueMenu.java)
-- [`ArenaSelectorMenu.java`](C:/Users/picha/Documents/backup/NewBedWars/src/main/java/n/plugins/newbedwars/menu/ArenaSelectorMenu.java)
-- [`ItemShopMenu.java`](C:/Users/picha/Documents/backup/NewBedWars/src/main/java/n/plugins/newbedwars/menu/ItemShopMenu.java)
-- [`UpgradeShopMenu.java`](C:/Users/picha/Documents/backup/NewBedWars/src/main/java/n/plugins/newbedwars/menu/UpgradeShopMenu.java)
-- [`TeamSelectorMenu.java`](C:/Users/picha/Documents/backup/NewBedWars/src/main/java/n/plugins/newbedwars/menu/TeamSelectorMenu.java)
-
-### Modelos e objetos principais
-
-- [`Arena.java`](C:/Users/picha/Documents/backup/NewBedWars/src/main/java/n/plugins/newbedwars/arena/Arena.java)
-- [`ArenaTeam.java`](C:/Users/picha/Documents/backup/NewBedWars/src/main/java/n/plugins/newbedwars/arena/ArenaTeam.java)
-- [`ArenaState.java`](C:/Users/picha/Documents/backup/NewBedWars/src/main/java/n/plugins/newbedwars/arena/ArenaState.java)
-- [`TeamColor.java`](C:/Users/picha/Documents/backup/NewBedWars/src/main/java/n/plugins/newbedwars/arena/TeamColor.java)
-- [`BedData.java`](C:/Users/picha/Documents/backup/NewBedWars/src/main/java/n/plugins/newbedwars/arena/BedData.java)
-- [`GeneratorPoint.java`](C:/Users/picha/Documents/backup/NewBedWars/src/main/java/n/plugins/newbedwars/arena/GeneratorPoint.java)
-- [`GeneratorType.java`](C:/Users/picha/Documents/backup/NewBedWars/src/main/java/n/plugins/newbedwars/arena/GeneratorType.java)
-- [`SetupSession.java`](C:/Users/picha/Documents/backup/NewBedWars/src/main/java/n/plugins/newbedwars/setup/SetupSession.java)
-- [`SetupPointAction.java`](C:/Users/picha/Documents/backup/NewBedWars/src/main/java/n/plugins/newbedwars/setup/SetupPointAction.java)
-- [`SetupRegionAction.java`](C:/Users/picha/Documents/backup/NewBedWars/src/main/java/n/plugins/newbedwars/setup/SetupRegionAction.java)
-- [`PlayerSnapshot.java`](C:/Users/picha/Documents/backup/NewBedWars/src/main/java/n/plugins/newbedwars/model/PlayerSnapshot.java)
+- [`NewBedWars.java`](src/main/java/n/plugins/newbedwars/NewBedWars.java): bootstrap do plugin
+- [`ArenaManager.java`](src/main/java/n/plugins/newbedwars/manager/ArenaManager.java): CRUD e persistencia das arenas
+- [`GameManager.java`](src/main/java/n/plugins/newbedwars/manager/GameManager.java): fluxo da partida, entrada, inicio, morte, respawn, eliminacao e fim
+- [`SetupManager.java`](src/main/java/n/plugins/newbedwars/manager/SetupManager.java): fluxo completo do setup
+- [`TeamManager.java`](src/main/java/n/plugins/newbedwars/manager/TeamManager.java): times, atribuicao, capacidade e status
+- [`NpcManager.java`](src/main/java/n/plugins/newbedwars/manager/NpcManager.java): NPCs de fila e NPCs de loja
+- [`ShopManager.java`](src/main/java/n/plugins/newbedwars/manager/ShopManager.java): compras, upgrades, picareta, machado, espada e armadura
+- [`ScoreboardManager.java`](src/main/java/n/plugins/newbedwars/manager/ScoreboardManager.java): scoreboard e tablist
+- [`BedWarsMode.java`](src/main/java/n/plugins/newbedwars/arena/BedWarsMode.java): definicao dos modos suportados
 
 ## Como Compilar
 
@@ -747,7 +705,7 @@ Responsabilidades:
 
 - `Java 8`
 - `Maven`
-- jars locais de `Spigot API 1.8.8` e `Citizens` conforme o [`pom.xml`](C:/Users/picha/Documents/backup/NewBedWars/pom.xml)
+- jars locais de `Spigot API 1.8.8` e `Citizens`, conforme configurado no [`pom.xml`](pom.xml)
 
 ### Build padrao
 
@@ -757,7 +715,7 @@ mvn clean package
 
 ### Build usado neste workspace
 
-Caso o `mvn` nao esteja no `PATH`, existe Maven local no projeto:
+Se o `mvn` nao estiver no `PATH`, existe Maven local no projeto:
 
 ```text
 .\.tools\apache-maven-3.9.9\bin\mvn.cmd -q -DskipTests package
@@ -776,16 +734,33 @@ target/NewBedWars-1.0-beta.jar
 Verifique:
 
 - `Citizens` instalado
-- versao do servidor compativel com 1.8.8
-- dependencias do `pom.xml` corretas para sua maquina se voce estiver compilando
+- versao do servidor compativel com `1.8.8`
+- dependencias do [`pom.xml`](pom.xml) corretas, caso voce esteja compilando
 
 ### O NPC nao aparece ou nao abre menu
 
 Verifique:
 
-- se o Citizens esta rodando corretamente
-- se o NPC foi recriado depois de atualizar o plugin
-- se a localizacao foi configurada no setup
+- se o Citizens esta funcionando corretamente
+- se o NPC foi recriado depois de alteracoes grandes
+- se a skin escolhida e valida
+
+### A arena nao aparece no NPC
+
+Confira:
+
+- se a arena foi validada e marcada como pronta
+- se o modo da arena bate com o modo do NPC
+- se o numero minimo de configuracoes foi concluido
+
+### O setup nao mostra a opcao nova
+
+Provavelmente o `config.yml` ou o `messages.yml` do servidor esta antigo.
+
+Solucao:
+
+- copie as secoes novas do projeto
+- ou apague os arquivos antigos para regenerar
 
 ### O jogador nao vai para o mapa certo
 
@@ -795,74 +770,62 @@ Verifique:
 - pasta do mapa na raiz do servidor
 - se o mundo existe com esse nome
 
-### O setup nao mostra item/acao nova
-
-Provavelmente o `config.yml` ou o `messages.yml` do servidor esta antigo.
-
-Solucao:
-
-- copie manualmente a secao nova do projeto
-- ou apague os arquivos antigos para o plugin regenerar
-
 ### A arena nao fica pronta
 
 Confira se faltou:
 
 - waiting spawn
 - waiting region
-- confirmacao do time vermelho
-- confirmacao do time azul
+- confirmacao dos times ativos do modo
 - gerador de diamante
 - gerador de esmeralda
 
-### Itens da GUI estao estranhos
+### A scoreboard nao mudou
 
-Sempre prefira:
+Se o servidor ja tinha `config.yml` antigo:
 
-- reiniciar o servidor apos atualizar o jar
-- testar com inventario limpo
-- recriar NPCs antigos se eles vieram de versoes bem anteriores
+- copie a secao `scoreboard:` nova do projeto
+- recarregue o plugin ou reinicie o servidor
 
 ## Limitacoes Atuais
 
-O plugin esta jogavel e funcional, mas hoje seria exagero chamar de BedWars completo estilo rede grande.
+O plugin esta funcional e bem mais completo do que uma base inicial, mas ainda deve ser tratado como `beta`.
 
-Pontos que ainda estao fora do escopo fechado:
+Pontos importantes:
 
-- SOLO 8 times completamente fechado do inicio ao fim
-- doubles, trios e squads
-- sistema completo de ferramentas permanentes por tier
-- todos os upgrades e refinamentos de redes grandes
-- NPC proprio sem Citizens
-- polimento total de loja para espelhar 100% um servidor especifico
+- os varios modos ja existem, mas ainda merecem mais teste real de gameplay
+- a base nao tenta copiar 100% um servidor especifico
+- ainda ha espaco para polimento de upgrades, eventos e rollback
+- a dependencia de `Citizens` continua obrigatoria
 
-## Roadmap Sugerido
+## Licenca
 
-Se quiser continuar evoluindo essa base, a ordem mais saudavel seria:
+Este projeto usa uma licenca propria em portugues, disponivel em [LICENSE](LICENSE).
 
-1. fechar completamente o `1v1` com mais testes de gameplay
-2. extrair sistema de modos para suportar `SOLO`, `DOUBLES` e outros
-3. ampliar upgrades e ferramentas permanentes
-4. adicionar reset/rollback ainda mais robusto
-5. criar NPC proprio sem depender de Citizens
-6. melhorar observabilidade com logs e debug de arenas
+Em resumo:
+
+- voce pode usar o plugin normalmente
+- voce pode distribuir copias nao modificadas
+- voce pode fazer integracoes externas, addons, wrappers e automacoes
+- voce nao pode modificar o codigo-fonte sem permissao
+- voce nao pode redistribuir jar ou source alterado sem permissao
 
 ## Resumo Rapido
 
-Se voce quer colocar esse projeto para rodar rapido:
+Se voce quer colocar o projeto para rodar rapido:
 
 1. instale `Citizens`
 2. coloque o mapa da arena na raiz do servidor
-3. use `/bw create <arena> <world>`
-4. use `/bw setup <arena>`
-5. configure waiting, times, geradores, lojas, baus e regioes
-6. finalize a arena
-7. use `/bw setlobby`
-8. crie o NPC com `/bw npc solo [skin]`
+3. use `/bw setlobby`
+4. crie a arena com `/bw create <arena> [world] [mode]`
+5. entre no setup com `/bw setup <arena>`
+6. configure os pontos gerais e os times ativos do modo
+7. finalize a arena
+8. crie o NPC do modo com `/bw npc <modo> [skin]`
 9. teste a fila e a partida
 
-Se voce quer desenvolver em cima dele:
+Se voce quer desenvolver em cima da base:
 
-1. leia primeiro [`NewBedWars.java`](C:/Users/picha/Documents/backup/NewBedWars/src/main/java/n/plugins/newbedwars/NewBedWars.java)
-2. depois passe por [`ArenaManager.java`](C:/Users/picha/Documents/backup/NewBedWars/src/main/java/n/plugins/newbedwars/manager/ArenaManager.java), [`SetupManager.java`](C:/Users/picha/Documents/backup/NewBedWars/src/main/java/n/plugins/newbedwars/manager/SetupManager.java) e [`GameManager.java`](C:/Users/picha/Documents/backup/NewBedWars/src/main/java/n/plugins/newbedwars/manager/GameManager.java)
-3. por fim, olhe [`ShopManager.java`](C:/Users/picha/Documents/backup/NewBedWars/src/main/java/n/plugins/newbedwars/manager/ShopManager.java), [`NpcManager.java`](C:/Users/picha/Documents/backup/NewBedWars/src/main/java/n/plugins/newbedwars/manager/NpcManager.java) e [`ScoreboardManager.java`](C:/Users/picha/Documents/backup/NewBedWars/src/main/java/n/plugins/newbedwars/manager/ScoreboardManager.java)
+1. comece por [`NewBedWars.java`](src/main/java/n/plugins/newbedwars/NewBedWars.java)
+2. depois leia [`ArenaManager.java`](src/main/java/n/plugins/newbedwars/manager/ArenaManager.java), [`SetupManager.java`](src/main/java/n/plugins/newbedwars/manager/SetupManager.java) e [`GameManager.java`](src/main/java/n/plugins/newbedwars/manager/GameManager.java)
+3. por fim, aprofunde em [`TeamManager.java`](src/main/java/n/plugins/newbedwars/manager/TeamManager.java), [`NpcManager.java`](src/main/java/n/plugins/newbedwars/manager/NpcManager.java), [`ShopManager.java`](src/main/java/n/plugins/newbedwars/manager/ShopManager.java) e [`ScoreboardManager.java`](src/main/java/n/plugins/newbedwars/manager/ScoreboardManager.java)
