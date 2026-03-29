@@ -17,7 +17,6 @@ import org.bukkit.inventory.ItemStack;
 
 public class SetupMainMenu extends BaseMenu {
 
-    private static final List<Integer> TEAM_SLOTS = Arrays.asList(14, 16);
     private final Arena arena;
 
     public SetupMainMenu(NewBedWars plugin, Arena arena) {
@@ -32,7 +31,7 @@ public class SetupMainMenu extends BaseMenu {
 
     @Override
     protected int getSize() {
-        return 36;
+        return 54;
     }
 
     @Override
@@ -40,7 +39,10 @@ public class SetupMainMenu extends BaseMenu {
         inventory.setItem(4, new ItemBuilder(Material.BOOK)
             .name("&bArena: &f" + arena.getName())
             .lore(
-                "&7Modo: &f1v1",
+                "&7Modo: &f" + arena.getMode().getDisplayName(),
+                "&7Times ativos: &f" + arena.getMode().getActiveColors().size(),
+                "&7Jogadores por time: &f" + arena.getMode().getTeamSize(),
+                "&7Maximo: &f" + arena.getMode().getMaxPlayers(),
                 "&7Spawn de espera: " + status(arena.getWaitingSpawn() != null),
                 "&7Area de espera: " + status(arena.getWaitingRegion() != null && arena.getWaitingRegion().isComplete()),
                 "&7Anti-void: " + antiVoidStatus(),
@@ -55,15 +57,24 @@ public class SetupMainMenu extends BaseMenu {
         inventory.setItem(12, action(Material.WOOD_AXE, "&eArea de espera", arena.getWaitingRegion() != null && arena.getWaitingRegion().isComplete(),
             "&eClique esquerdo para marcar /pos1 e /pos2",
             "&cClique direito para limpar"));
-        inventory.setItem(20, action(Material.FEATHER, "&cAnti-void", arena.hasAntiVoidY(),
+        inventory.setItem(14, action(Material.FEATHER, "&cAnti-void", arena.hasAntiVoidY(),
             "&eClique esquerdo para salvar o Y atual",
             "&cClique direito para limpar"));
+        inventory.setItem(16, new ItemBuilder(Material.NAME_TAG)
+            .name("&fModo da arena")
+            .lore(
+                "&7Atual: &b" + arena.getMode().getDisplayName(),
+                "&7Use: &f/bw mode " + arena.getName() + " <modo>",
+                "&7Modos: &f1v1, 2v2, 3v3, 4v4",
+                "&7       &fsolo, dupla, trio, quarteto"
+            ).build());
 
-        List<TeamColor> activeColors = TeamColor.getOneVsOneColors();
-        for (int index = 0; index < activeColors.size() && index < TEAM_SLOTS.size(); index++) {
+        List<TeamColor> activeColors = plugin.getTeamManager().getActiveColors(arena);
+        List<Integer> teamSlots = resolveTeamSlots(activeColors.size());
+        for (int index = 0; index < activeColors.size() && index < teamSlots.size(); index++) {
             TeamColor color = activeColors.get(index);
             ArenaTeam team = arena.getTeam(color);
-            inventory.setItem(TEAM_SLOTS.get(index), new ItemBuilder(Material.WOOL, 1, color.getWoolData())
+            inventory.setItem(teamSlots.get(index).intValue(), new ItemBuilder(Material.WOOL, 1, color.getWoolData())
                 .name(color.getColoredName())
                 .lore(
                     "&7Status: " + status(team.isSetupComplete()),
@@ -74,17 +85,18 @@ public class SetupMainMenu extends BaseMenu {
                 ).build());
         }
 
-        inventory.setItem(28, action(Material.DIAMOND, "&bGeradores de diamante", !arena.getGlobalGenerators(GeneratorType.DIAMOND).isEmpty(),
+        inventory.setItem(37, action(Material.DIAMOND, "&bGeradores de diamante", !arena.getGlobalGenerators(GeneratorType.DIAMOND).isEmpty(),
             "&eClique esquerdo para adicionar mais um",
             "&cClique direito para limpar todos"));
-        inventory.setItem(30, action(Material.EMERALD, "&aGeradores de esmeralda", !arena.getGlobalGenerators(GeneratorType.EMERALD).isEmpty(),
+        inventory.setItem(39, action(Material.EMERALD, "&aGeradores de esmeralda", !arena.getGlobalGenerators(GeneratorType.EMERALD).isEmpty(),
             "&eClique esquerdo para adicionar mais um",
             "&cClique direito para limpar todos"));
 
-        inventory.setItem(32, new ItemBuilder(Material.EMERALD_BLOCK)
+        inventory.setItem(43, new ItemBuilder(Material.EMERALD_BLOCK)
             .name("&aFinalizar")
             .lore(
-                "&71v1 com Vermelho e Azul",
+                "&7Modo: &f" + arena.getMode().getDisplayName(),
+                "&7Times ativos: &f" + arena.getMode().getActiveColors().size(),
                 "&7Valida toda a arena",
                 "&7e marca como pronta.",
                 "",
@@ -94,7 +106,7 @@ public class SetupMainMenu extends BaseMenu {
 
     @Override
     public void handleClick(Player player, int slot, ClickType clickType) {
-        if (slot == 32) {
+        if (slot == 43) {
             plugin.getMenuManager().openSetupConfirmMenu(player, arena);
             return;
         }
@@ -117,7 +129,7 @@ public class SetupMainMenu extends BaseMenu {
             return;
         }
 
-        if (slot == 20) {
+        if (slot == 14) {
             if (clickType.isRightClick()) {
                 plugin.getSetupManager().clearArenaPoint(player, arena, SetupPointAction.ARENA_ANTI_VOID);
             } else {
@@ -126,7 +138,7 @@ public class SetupMainMenu extends BaseMenu {
             return;
         }
 
-        if (slot == 28) {
+        if (slot == 37) {
             if (clickType.isRightClick()) {
                 plugin.getSetupManager().clearArenaPoint(player, arena, SetupPointAction.ARENA_DIAMOND_GENERATOR);
             } else {
@@ -135,7 +147,7 @@ public class SetupMainMenu extends BaseMenu {
             return;
         }
 
-        if (slot == 30) {
+        if (slot == 39) {
             if (clickType.isRightClick()) {
                 plugin.getSetupManager().clearArenaPoint(player, arena, SetupPointAction.ARENA_EMERALD_GENERATOR);
             } else {
@@ -144,9 +156,10 @@ public class SetupMainMenu extends BaseMenu {
             return;
         }
 
-        List<TeamColor> activeColors = TeamColor.getOneVsOneColors();
-        for (int index = 0; index < TEAM_SLOTS.size() && index < activeColors.size(); index++) {
-            if (TEAM_SLOTS.get(index) == slot) {
+        List<TeamColor> activeColors = plugin.getTeamManager().getActiveColors(arena);
+        List<Integer> teamSlots = resolveTeamSlots(activeColors.size());
+        for (int index = 0; index < teamSlots.size() && index < activeColors.size(); index++) {
+            if (teamSlots.get(index).intValue() == slot) {
                 plugin.getMenuManager().openTeamSetupMenu(player, arena, activeColors.get(index));
                 return;
             }
@@ -178,5 +191,15 @@ public class SetupMainMenu extends BaseMenu {
             return "\u00A7aY " + (int) rounded;
         }
         return "\u00A7aY " + String.format(java.util.Locale.US, "%.1f", value);
+    }
+
+    private List<Integer> resolveTeamSlots(int amount) {
+        if (amount <= 2) {
+            return Arrays.asList(21, 23);
+        }
+        if (amount <= 4) {
+            return Arrays.asList(20, 22, 24, 26);
+        }
+        return Arrays.asList(19, 20, 21, 22, 23, 24, 25, 26);
     }
 }

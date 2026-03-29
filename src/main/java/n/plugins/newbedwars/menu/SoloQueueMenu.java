@@ -1,6 +1,7 @@
 package n.plugins.newbedwars.menu;
 
 import n.plugins.newbedwars.NewBedWars;
+import n.plugins.newbedwars.arena.BedWarsMode;
 import n.plugins.newbedwars.util.ItemBuilder;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
@@ -8,13 +9,20 @@ import org.bukkit.event.inventory.ClickType;
 
 public class SoloQueueMenu extends BaseMenu {
 
+    private final BedWarsMode mode;
+
     public SoloQueueMenu(NewBedWars plugin) {
+        this(plugin, BedWarsMode.ONE_VS_ONE);
+    }
+
+    public SoloQueueMenu(NewBedWars plugin, BedWarsMode mode) {
         super(plugin);
+        this.mode = mode == null ? BedWarsMode.ONE_VS_ONE : mode;
     }
 
     @Override
     protected String getTitle() {
-        return "\u00A78BedWars - 1v1";
+        return "\u00A78BedWars - " + mode.getDisplayName();
     }
 
     @Override
@@ -25,10 +33,13 @@ public class SoloQueueMenu extends BaseMenu {
     @Override
     protected void draw(Player player) {
         inventory.setItem(11, new ItemBuilder(Material.BED)
-            .name("&bBedWars - 1v1")
+            .name("&bBedWars - " + mode.getDisplayName())
             .lore(
                 "&7Entre automaticamente",
                 "&7na melhor arena disponivel.",
+                "&7Times: &f" + mode.getActiveColors().size(),
+                "&7Jogadores por time: &f" + mode.getTeamSize(),
+                "&7Maximo: &f" + mode.getMaxPlayers(),
                 "",
                 "&eClique para jogar agora"
             ).glow().build());
@@ -38,6 +49,7 @@ public class SoloQueueMenu extends BaseMenu {
             .lore(
                 "&7Veja as arenas prontas",
                 "&7e escolha onde entrar.",
+                "&7Modo: &f" + mode.getDisplayName(),
                 "",
                 "&eClique para abrir"
             ).build());
@@ -49,9 +61,9 @@ public class SoloQueueMenu extends BaseMenu {
     public void handleClick(Player player, int slot, ClickType clickType) {
         if (slot == 11) {
             player.closeInventory();
-            plugin.getGameManager().quickJoin(player);
+            plugin.getGameManager().quickJoin(player, mode);
         } else if (slot == 15) {
-            plugin.getMenuManager().openArenaSelectorMenu(player);
+            plugin.getMenuManager().openArenaSelectorMenu(player, mode);
         } else if (slot == 22) {
             player.closeInventory();
         }

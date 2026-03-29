@@ -11,6 +11,7 @@ import n.plugins.newbedwars.NewBedWars;
 import n.plugins.newbedwars.arena.Arena;
 import n.plugins.newbedwars.arena.ArenaState;
 import n.plugins.newbedwars.arena.ArenaTeam;
+import n.plugins.newbedwars.arena.BedWarsMode;
 import n.plugins.newbedwars.arena.TeamColor;
 import n.plugins.newbedwars.model.PlayerSnapshot;
 import n.plugins.newbedwars.util.ItemBuilder;
@@ -97,6 +98,10 @@ public class GameManager {
         return plugin.getTeamManager().getArenaCapacity();
     }
 
+    public int getArenaCapacity(Arena arena) {
+        return plugin.getTeamManager().getArenaCapacity(arena);
+    }
+
     public boolean isRespawning(UUID uniqueId) {
         return uniqueId != null && pendingRespawns.containsKey(uniqueId);
     }
@@ -131,6 +136,13 @@ public class GameManager {
             }
 
             clearPendingRespawn(uniqueId);
+            player.getInventory().clear();
+            player.getInventory().setArmorContents(null);
+            player.setItemOnCursor(null);
+            player.setCanPickupItems(false);
+            for (PotionEffect effect : new ArrayList<PotionEffect>(player.getActivePotionEffects())) {
+                player.removePotionEffect(effect.getType());
+            }
             int leaveSlot = resolveHotbarSlot("pre-game-items.leave-arena.slot", 8);
             player.getInventory().setItem(leaveSlot, createLeaveArenaItem());
             player.setLevel(0);
@@ -177,7 +189,7 @@ public class GameManager {
 
     public void joinArena(Player player, Arena arena) {
         if (arena == null) {
-            plugin.getMessageManager().send(player, "game.no-arena-available");
+            sendNoArenaAvailable(player, BedWarsMode.ONE_VS_ONE);
             return;
         }
 
@@ -192,9 +204,9 @@ public class GameManager {
                 return;
             }
 
-            arena = plugin.getArenaManager().resolveJoinableArena(arena, getArenaCapacity());
+            arena = plugin.getArenaManager().resolveJoinableArena(arena, getArenaCapacity(arena));
             if (arena == null) {
-                plugin.getMessageManager().send(player, "game.no-arena-available");
+                sendNoArenaAvailable(player, arena.getMode());
                 return;
             }
         }
@@ -203,15 +215,20 @@ public class GameManager {
     }
 
     public void quickJoin(Player player) {
-        Arena runtimeArena = findBestRuntimeArena();
+        quickJoin(player, BedWarsMode.ONE_VS_ONE);
+    }
+
+    public void quickJoin(Player player, BedWarsMode mode) {
+        BedWarsMode queueMode = mode == null ? BedWarsMode.ONE_VS_ONE : mode;
+        Arena runtimeArena = findBestRuntimeArena(queueMode);
         if (runtimeArena != null) {
             joinRuntimeArena(player, runtimeArena);
             return;
         }
 
-        Arena template = findBestTemplateArena();
+        Arena template = findBestTemplateArena(queueMode);
         if (template == null) {
-            plugin.getMessageManager().send(player, "game.no-arena-available");
+            sendNoArenaAvailable(player, queueMode);
             return;
         }
 
@@ -219,9 +236,13 @@ public class GameManager {
     }
 
     public List<Arena> getJoinableArenas() {
+        return getJoinableArenas(BedWarsMode.ONE_VS_ONE);
+    }
+
+    public List<Arena> getJoinableArenas(BedWarsMode mode) {
         List<Arena> arenas = new ArrayList<Arena>();
         for (Arena arena : plugin.getArenaManager().getConfiguredArenas()) {
-            if (arena.isReady()) {
+            if (arena.isReady() && (mode == null || arena.getMode() == mode)) {
                 arenas.add(arena);
             }
         }
@@ -262,12 +283,12 @@ public class GameManager {
         broadcast(arena, "game.leave-broadcast", placeholders(
             "player", player.getName(),
             "players", String.valueOf(arena.getPlayerCount()),
-            "max_players", String.valueOf(getArenaCapacity())
+            "max_players", String.valueOf(getArenaCapacity(arena))
         ));
 
         if (wasIngame) {
             checkWin(arena);
-        } else if (arena.getPlayerCount() < getRequiredPlayersToStart()) {
+        } else if (arena.getPlayerCount() < getRequiredPlayersToStart(arena)) {
             arena.setState(ArenaState.WAITING);
             arena.setCountdown(0);
         }
@@ -483,7 +504,7 @@ public class GameManager {
             maintainArenaWorld(arena);
 
             if (arena.getState() == ArenaState.WAITING) {
-                if (arena.getPlayerCount() >= getRequiredPlayersToStart()) {
+                if (arena.getPlayerCount() >= getRequiredPlayersToStart(arena)) {
                     arena.setState(ArenaState.STARTING);
                     arena.setCountdown(getStartingCountdown());
                 }
@@ -503,7 +524,7 @@ public class GameManager {
     }
 
     private void handleStartingTick(Arena arena) {
-        if (arena.getPlayerCount() < getRequiredPlayersToStart()) {
+        if (arena.getPlayerCount() < getRequiredPlayersToStart(arena)) {
             arena.setState(ArenaState.WAITING);
             arena.setCountdown(0);
             broadcast(arena, "game.countdown-cancelled", Collections.<String, String>emptyMap());
@@ -514,11 +535,11 @@ public class GameManager {
         }
 
         int seconds = arena.getCountdown();
-        if ((seconds == 10 || seconds == 5 || seconds <= 3) && plugin.getConfig().getBoolean("settings.start-countdown-chat", true)) {
+        if (seconds > 0 && (seconds == 10 || seconds <= 5) && plugin.getConfig().getBoolean("settings.start-countdown-chat", true)) {
             broadcast(arena, "game.countdown", Collections.singletonMap("seconds", String.valueOf(seconds)));
         }
 
-        if (seconds == 10 || seconds <= 5) {
+        if (seconds > 0 && (seconds == 10 || seconds <= 5)) {
             playCountdownSounds(arena);
         }
 
@@ -541,7 +562,7 @@ public class GameManager {
             return;
         }
 
-        int maxPlayers = getArenaCapacity();
+        int maxPlayers = getArenaCapacity(arena);
         if (arena.isFull(maxPlayers)) {
             plugin.getMessageManager().send(player, "game.arena-full");
             return;
@@ -570,21 +591,23 @@ public class GameManager {
             "max_players", String.valueOf(maxPlayers)
         ));
 
-        if (arena.getState() == ArenaState.WAITING && arena.getPlayerCount() >= getRequiredPlayersToStart()) {
+        if (arena.getState() == ArenaState.WAITING && arena.getPlayerCount() >= getRequiredPlayersToStart(arena)) {
             arena.setState(ArenaState.STARTING);
             arena.setCountdown(getStartingCountdown());
         }
     }
 
-    private Arena findBestRuntimeArena() {
+    private Arena findBestRuntimeArena(BedWarsMode mode) {
         List<Arena> arenas = new ArrayList<Arena>();
-        int maxPlayers = getArenaCapacity();
 
         for (Arena arena : plugin.getArenaManager().getRuntimeArenas()) {
+            if (mode != null && arena.getMode() != mode) {
+                continue;
+            }
             if (arena.getState() != ArenaState.WAITING && arena.getState() != ArenaState.STARTING) {
                 continue;
             }
-            if (arena.isFull(maxPlayers)) {
+            if (arena.isFull(getArenaCapacity(arena))) {
                 continue;
             }
             arenas.add(arena);
@@ -599,8 +622,8 @@ public class GameManager {
         return arenas.isEmpty() ? null : arenas.get(0);
     }
 
-    private Arena findBestTemplateArena() {
-        List<Arena> arenas = getJoinableArenas();
+    private Arena findBestTemplateArena(BedWarsMode mode) {
+        List<Arena> arenas = getJoinableArenas(mode);
         return arenas.isEmpty() ? null : arenas.get(0);
     }
 
@@ -813,8 +836,8 @@ public class GameManager {
         }
     }
 
-    private int getRequiredPlayersToStart() {
-        return getArenaCapacity();
+    private int getRequiredPlayersToStart(Arena arena) {
+        return getArenaCapacity(arena);
     }
 
     private boolean isPreGameArena(Arena arena) {
@@ -850,6 +873,13 @@ public class GameManager {
         List<String> lore = new ArrayList<String>();
         for (String line : plugin.getConfig().getStringList("pre-game-items.team-selector.lore")) {
             lore.add(line.replace("%team%", color == null ? "&7Aleatorio" : color.getColoredName()));
+        }
+
+        if (color != null && color != TeamColor.RED && color != TeamColor.BLUE) {
+            return new ItemBuilder(Material.WOOL, 1, color.getWoolData())
+                .name(plugin.getConfig().getString("pre-game-items.team-selector.name", "&bEscolher Time"))
+                .lore(lore)
+                .build();
         }
 
         return new ItemBuilder(Material.SKULL_ITEM, 1, (short) 3)
@@ -893,6 +923,33 @@ public class GameManager {
         return plugin.getConfig().getString("pre-game-items.team-selector.head-owner-default", "MHF_Question");
     }
 
+    private TeamColor pickSmallestTeam(Arena arena) {
+        List<TeamColor> colors = new ArrayList<TeamColor>(plugin.getTeamManager().getActiveColors(arena));
+        Collections.shuffle(colors);
+        TeamColor best = null;
+        int bestSize = Integer.MAX_VALUE;
+        int teamSize = plugin.getTeamManager().getTeamSize(arena);
+
+        for (TeamColor color : colors) {
+            int currentSize = plugin.getTeamManager().getTeamMemberCount(arena, color);
+            if (currentSize >= teamSize) {
+                continue;
+            }
+            if (best == null || currentSize < bestSize) {
+                best = color;
+                bestSize = currentSize;
+            }
+        }
+
+        return best;
+    }
+
+    private void sendNoArenaAvailable(Player player, BedWarsMode mode) {
+        plugin.getMessageManager().send(player, "game.no-arena-available", Collections.singletonMap(
+            "mode", mode == null ? BedWarsMode.ONE_VS_ONE.getDisplayName() : mode.getDisplayName()
+        ));
+    }
+
     private void assignRandomTeams(Arena arena) {
         if (arena == null) {
             return;
@@ -903,23 +960,17 @@ public class GameManager {
 
         List<UUID> players = new ArrayList<UUID>(arena.getPlayers());
         Collections.shuffle(players);
-        List<TeamColor> colors = new ArrayList<TeamColor>(plugin.getTeamManager().getActiveColors());
-        Collections.shuffle(colors);
-
-        List<UUID> remainingPlayers = new ArrayList<UUID>();
         for (UUID uniqueId : players) {
             TeamColor preferred = preferences.get(uniqueId);
-            if (preferred != null && colors.contains(preferred)) {
+            if (preferred != null && plugin.getTeamManager().isTeamAvailable(arena, uniqueId, preferred)) {
                 arena.getPlayerTeams().put(uniqueId, preferred);
-                colors.remove(preferred);
-            } else {
-                remainingPlayers.add(uniqueId);
+                continue;
             }
-        }
 
-        int limit = Math.min(remainingPlayers.size(), colors.size());
-        for (int i = 0; i < limit; i++) {
-            arena.getPlayerTeams().put(remainingPlayers.get(i), colors.get(i));
+            TeamColor next = pickSmallestTeam(arena);
+            if (next != null) {
+                arena.getPlayerTeams().put(uniqueId, next);
+            }
         }
     }
 

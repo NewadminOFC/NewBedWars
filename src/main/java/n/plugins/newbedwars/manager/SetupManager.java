@@ -662,7 +662,7 @@ public class SetupManager {
         addRegionMarkers(markers, "waiting-area", arena.getWaitingRegion(), "&eSala de espera");
         addPointMarker(markers, "anti-void", resolveAntiVoidMarkerLocation(arena), "&cAnti-void Y: &f" + formatY(arena.getAntiVoidY()));
 
-        for (TeamColor color : plugin.getTeamManager().getActiveColors()) {
+        for (TeamColor color : plugin.getTeamManager().getActiveColors(arena)) {
             ArenaTeam team = arena.getTeam(color);
             if (team == null) {
                 continue;

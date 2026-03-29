@@ -50,7 +50,7 @@ public class GeneratorManager {
                 continue;
             }
 
-            for (TeamColor color : plugin.getTeamManager().getActiveColors()) {
+            for (TeamColor color : plugin.getTeamManager().getActiveColors(arena)) {
                 ArenaTeam team = arena.getTeam(color);
                 if (team == null) {
                     continue;

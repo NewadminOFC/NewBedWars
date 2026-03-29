@@ -6,6 +6,7 @@ import java.util.Set;
 import java.util.UUID;
 import n.plugins.newbedwars.NewBedWars;
 import n.plugins.newbedwars.arena.Arena;
+import n.plugins.newbedwars.arena.BedWarsMode;
 import n.plugins.newbedwars.arena.TeamColor;
 import n.plugins.newbedwars.menu.ArenaSelectorMenu;
 import n.plugins.newbedwars.menu.BaseMenu;
@@ -71,11 +72,19 @@ public class MenuManager {
     }
 
     public void openSoloQueueMenu(Player player) {
-        new SoloQueueMenu(plugin).open(player);
+        openQueueMenu(player, BedWarsMode.ONE_VS_ONE);
+    }
+
+    public void openQueueMenu(Player player, BedWarsMode mode) {
+        new SoloQueueMenu(plugin, mode).open(player);
     }
 
     public void openArenaSelectorMenu(Player player) {
-        new ArenaSelectorMenu(plugin).open(player);
+        openArenaSelectorMenu(player, BedWarsMode.ONE_VS_ONE);
+    }
+
+    public void openArenaSelectorMenu(Player player, BedWarsMode mode) {
+        new ArenaSelectorMenu(plugin, mode).open(player);
     }
 
     public void openTeamSelectorMenu(Player player, Arena arena) {

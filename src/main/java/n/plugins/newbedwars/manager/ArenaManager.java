@@ -10,6 +10,7 @@ import java.util.Map;
 import java.util.UUID;
 import n.plugins.newbedwars.NewBedWars;
 import n.plugins.newbedwars.arena.Arena;
+import n.plugins.newbedwars.arena.BedWarsMode;
 import n.plugins.newbedwars.arena.ArenaState;
 import n.plugins.newbedwars.arena.ArenaTeam;
 import n.plugins.newbedwars.arena.BedData;
@@ -41,7 +42,12 @@ public class ArenaManager {
     }
 
     public Arena createArena(String name, String worldName) {
+        return createArena(name, worldName, BedWarsMode.ONE_VS_ONE);
+    }
+
+    public Arena createArena(String name, String worldName, BedWarsMode mode) {
         Arena arena = new Arena(name, worldName);
+        arena.setMode(mode);
         configuredArenas.put(name.toLowerCase(), arena);
         saveArena(arena);
         applyArenaWorldRules(arena.getWorld());
@@ -203,6 +209,7 @@ public class ArenaManager {
             String name = configuration.getString("name", file.getName().replace(".yml", ""));
             String worldName = configuration.getString("world");
             Arena arena = new Arena(name, worldName);
+            arena.setMode(BedWarsMode.fromInput(configuration.getString("mode")));
             arena.setState(ArenaState.WAITING);
             arena.setWaitingSpawn(LocationUtil.loadLocation(configuration, "waiting-spawn"));
             if (configuration.isSet("anti-void-y")) {
@@ -311,6 +318,7 @@ public class ArenaManager {
 
         configuration.set("name", arena.getName());
         configuration.set("world", arena.getWorldName());
+        configuration.set("mode", arena.getMode().getId());
         configuration.set("ready", arena.isReady());
         configuration.set("state", arena.getState().name());
 

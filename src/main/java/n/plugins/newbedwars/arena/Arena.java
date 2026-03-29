@@ -36,6 +36,7 @@ public class Arena {
     private final Map<UUID, Integer> playerAxeTiers;
     private final Map<BlockPosition, BlockSnapshot> blockSnapshots;
     private final Set<BlockPosition> placedBlocks;
+    private BedWarsMode mode;
     private String activeWorldName;
     private Location waitingSpawn;
     private CuboidRegion waitingRegion;
@@ -70,6 +71,7 @@ public class Arena {
         this.playerAxeTiers = new HashMap<UUID, Integer>();
         this.blockSnapshots = new LinkedHashMap<BlockPosition, BlockSnapshot>();
         this.placedBlocks = new HashSet<BlockPosition>();
+        this.mode = BedWarsMode.ONE_VS_ONE;
         this.state = ArenaState.WAITING;
     }
 
@@ -91,6 +93,15 @@ public class Arena {
 
     public boolean isRuntimeInstance() {
         return runtimeInstance;
+    }
+
+    public BedWarsMode getMode() {
+        return mode == null ? BedWarsMode.ONE_VS_ONE : mode;
+    }
+
+    public void setMode(BedWarsMode mode) {
+        this.mode = mode == null ? BedWarsMode.ONE_VS_ONE : mode;
+        this.ready = false;
     }
 
     public World getWorld() {
@@ -412,6 +423,7 @@ public class Arena {
 
     public Arena createRuntimeCopy(String runtimeName) {
         Arena copy = new Arena(runtimeName, worldName, templateName, true);
+        copy.mode = getMode();
         copy.waitingSpawn = getWaitingSpawn();
         copy.waitingRegion = waitingRegion == null ? null : new CuboidRegion(waitingRegion.getPos1(), waitingRegion.getPos2());
         copy.antiVoidY = antiVoidY;
@@ -450,7 +462,7 @@ public class Arena {
             issues.add("Area de espera nao configurada");
         }
 
-        for (TeamColor color : TeamColor.getOneVsOneColors()) {
+        for (TeamColor color : getMode().getActiveColors()) {
             ArenaTeam team = teams.get(color);
             if (!team.isSetupComplete()) {
                 issues.add("Time " + color.getDisplayName() + " incompleto");

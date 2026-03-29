@@ -36,6 +36,7 @@ public class ScoreboardManager {
     private final NewBedWars plugin;
     private final Map<UUID, BoardContext> boards;
     private final SimpleDateFormat dateFormat;
+    private final SimpleDateFormat dateTimeFormat;
     private int taskId = -1;
 
     private static final class BoardContext {
@@ -85,6 +86,7 @@ public class ScoreboardManager {
         this.plugin = plugin;
         this.boards = new HashMap<UUID, BoardContext>();
         this.dateFormat = new SimpleDateFormat("dd/MM/yy");
+        this.dateTimeFormat = new SimpleDateFormat("dd/MM/yy HH:mm:ss");
     }
 
     public void start() {
@@ -92,12 +94,13 @@ public class ScoreboardManager {
             return;
         }
 
+        long updateTicks = Math.max(1L, plugin.getConfig().getLong("scoreboard.update-ticks", 10L));
         taskId = Bukkit.getScheduler().scheduleSyncRepeatingTask(plugin, new Runnable() {
             @Override
             public void run() {
                 updateAll();
             }
-        }, 20L, 20L);
+        }, updateTicks, updateTicks);
     }
 
     public void shutdown() {
@@ -134,18 +137,20 @@ public class ScoreboardManager {
     }
 
     private void updateLobby(Player player) {
-        List<String> lines = plugin.getConfig().getStringList("scoreboard.lobby");
-        updateBoard(player, lines, null, "lobby:" + lines.size());
+        List<String> rawLines = plugin.getConfig().getStringList("scoreboard.lobby");
+        updateBoard(player, rawLines, null, "lobby");
         updateTabList(player, null);
     }
 
     private void updateArena(Player player, Arena arena) {
-        List<String> lines = plugin.getConfig().getStringList("scoreboard." + arena.getState().name().toLowerCase());
-        updateBoard(player, lines, arena, arena.getState().name().toLowerCase() + ":" + lines.size());
+        List<String> rawLines = plugin.getConfig().getStringList("scoreboard." + arena.getState().name().toLowerCase());
+        updateBoard(player, rawLines, arena, arena.getState().name().toLowerCase());
         updateTabList(player, arena);
     }
 
-    private void updateBoard(Player player, List<String> lines, Arena arena, String layoutKey) {
+    private void updateBoard(Player player, List<String> rawLines, Arena arena, String layoutBase) {
+        List<String> lines = prepareBoardLines(rawLines, player, arena);
+        String layoutKey = layoutBase + ":" + lines.size();
         BoardContext context = boards.get(player.getUniqueId());
         if (context == null || !context.layoutKey.equals(layoutKey)) {
             context = createBoard(layoutKey, lines.size());
@@ -245,20 +250,23 @@ public class ScoreboardManager {
 
     private String replacePlaceholders(String line, Player player, Arena arena) {
         String currentDate = dateFormat.format(new Date());
+        String currentDateTime = dateTimeFormat.format(new Date());
         String online = String.valueOf(Bukkit.getOnlinePlayers().size());
         String readyArenas = String.valueOf(countReadyArenas());
 
         line = line
             .replace("%date%", currentDate)
+            .replace("%date_time%", currentDateTime)
+            .replace("%clock%", currentDateTime)
             .replace("%online%", online)
             .replace("%ready_arenas%", readyArenas)
-            .replace("%mode%", "1v1")
+            .replace("%mode%", arena == null ? "Lobby" : arena.getMode().getDisplayName())
             .replace("%arena%", arena == null ? "Lobby" : arena.getDisplayName())
             .replace("%status%", arena == null ? "Lobby" : arena.getState().getDisplayName())
             .replace("%players%", arena == null ? "0" : String.valueOf(arena.getPlayerCount()))
             .replace("%alive_players%", arena == null ? "0" : String.valueOf(arena.getAlivePlayers()))
-            .replace("%min_players%", String.valueOf(plugin.getGameManager().getArenaCapacity()))
-            .replace("%max_players%", String.valueOf(plugin.getGameManager().getArenaCapacity()))
+            .replace("%min_players%", String.valueOf(arena == null ? plugin.getGameManager().getArenaCapacity() : plugin.getGameManager().getArenaCapacity(arena)))
+            .replace("%max_players%", String.valueOf(arena == null ? plugin.getGameManager().getArenaCapacity() : plugin.getGameManager().getArenaCapacity(arena)))
             .replace("%countdown%", arena == null ? "0" : String.valueOf(arena.getState() == ArenaState.ENDING ? arena.getEndCountdown() : arena.getCountdown()))
             .replace("%time%", arena == null ? "00:00" : TimeUtil.formatSeconds(arena.getElapsedTime()))
             .replace("%team%", arena == null ? "\u00A77Sem time" : plugin.getTeamManager().getDisplay(arena, player.getUniqueId()))
@@ -296,6 +304,50 @@ public class ScoreboardManager {
         return line;
     }
 
+    private List<String> prepareBoardLines(List<String> rawLines, Player player, Arena arena) {
+        List<String> rendered = new ArrayList<String>();
+        if (rawLines == null) {
+            return rendered;
+        }
+
+        for (String rawLine : rawLines) {
+            rendered.add(ChatUtil.color(replacePlaceholders(rawLine, player, arena)));
+        }
+
+        List<String> compacted = new ArrayList<String>();
+        boolean previousBlank = true;
+        for (String line : rendered) {
+            boolean blank = isBlankLine(line);
+            if (blank) {
+                if (previousBlank) {
+                    continue;
+                }
+                compacted.add("");
+            } else {
+                compacted.add(line);
+            }
+            previousBlank = blank;
+        }
+
+        while (!compacted.isEmpty() && isBlankLine(compacted.get(0))) {
+            compacted.remove(0);
+        }
+
+        while (!compacted.isEmpty() && isBlankLine(compacted.get(compacted.size() - 1))) {
+            compacted.remove(compacted.size() - 1);
+        }
+
+        if (compacted.isEmpty()) {
+            compacted.add(" ");
+        }
+
+        return compacted;
+    }
+
+    private boolean isBlankLine(String line) {
+        return line == null || ChatColor.stripColor(line).trim().isEmpty();
+    }
+
     private int countReadyArenas() {
         int total = 0;
         for (Arena arena : plugin.getArenaManager().getConfiguredArenas()) {
@@ -308,7 +360,8 @@ public class ScoreboardManager {
 
     private int countBedsAlive(Arena arena) {
         int total = 0;
-        for (ArenaTeam team : arena.getTeams().values()) {
+        for (TeamColor color : plugin.getTeamManager().getActiveColors(arena)) {
+            ArenaTeam team = arena.getTeam(color);
             if (!team.isBedDestroyed()) {
                 total++;
             }
@@ -349,7 +402,7 @@ public class ScoreboardManager {
     }
 
     private String formatTeamLine(Arena arena, Player viewer, TeamColor color) {
-        if (!plugin.getTeamManager().isActiveColor(color)) {
+        if (!plugin.getTeamManager().isActiveColor(arena, color)) {
             return "";
         }
 
@@ -477,10 +530,9 @@ public class ScoreboardManager {
         if (viewerArena != null && targetArena != null && viewerArena.getName().equalsIgnoreCase(targetArena.getName())) {
             if (targetArena.getSpectators().contains(target.getUniqueId())) {
                 path = "tablist.player-list.same-arena.spectator";
-            } else if (targetColor == TeamColor.RED) {
-                path = "tablist.player-list.same-arena.red";
-            } else if (targetColor == TeamColor.BLUE) {
-                path = "tablist.player-list.same-arena.blue";
+            } else if (targetColor != null) {
+                String colorPath = "tablist.player-list.same-arena." + targetColor.name().toLowerCase();
+                path = plugin.getConfig().contains(colorPath) ? colorPath : "tablist.player-list.same-arena.default";
             } else {
                 path = "tablist.player-list.same-arena.default";
             }
@@ -513,7 +565,7 @@ public class ScoreboardManager {
             .replace("%team_plain%", plainTeamName)
             .replace("%arena%", arenaName)
             .replace("%status%", status)
-            .replace("%mode%", "1v1")
+            .replace("%mode%", targetArena == null ? "Lobby" : targetArena.getMode().getDisplayName())
             .replace("%online%", String.valueOf(Bukkit.getOnlinePlayers().size()));
     }
 

@@ -2,7 +2,7 @@ name: NewBedWars
 version: '${project.version}'
 main: n.plugins.newbedwars.NewBedWars
 author: NewadminOFC
-description: BedWars SOLO 1.8.8 com setup completo in-game
+description: BedWars 1.8.8 com setup completo in-game e varios modos
 depend: [Citizens]
 commands:
   bw:

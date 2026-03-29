@@ -1,5 +1,6 @@
 name: example
 world: world
+mode: 1v1
 ready: false
 state: WAITING
 anti-void-y: null

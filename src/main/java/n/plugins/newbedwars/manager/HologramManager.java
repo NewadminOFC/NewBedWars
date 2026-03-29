@@ -45,7 +45,7 @@ public class HologramManager {
             return;
         }
 
-        for (TeamColor color : plugin.getTeamManager().getActiveColors()) {
+        for (TeamColor color : plugin.getTeamManager().getActiveColors(arena)) {
             ArenaTeam team = arena.getTeam(color);
             if (team == null || team.getTeamChestLocation() == null) {
                 continue;
@@ -67,7 +67,7 @@ public class HologramManager {
             return;
         }
 
-        for (TeamColor color : plugin.getTeamManager().getActiveColors()) {
+        for (TeamColor color : plugin.getTeamManager().getActiveColors(arena)) {
             ArenaTeam team = arena.getTeam(color);
             if (team == null || team.getEnderChestLocation() == null) {
                 continue;
@@ -91,7 +91,7 @@ public class HologramManager {
             return;
         }
 
-        for (TeamColor color : plugin.getTeamManager().getActiveColors()) {
+        for (TeamColor color : plugin.getTeamManager().getActiveColors(arena)) {
             clearTeamChestHologram(arena, color);
         }
     }

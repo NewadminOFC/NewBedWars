@@ -6,6 +6,7 @@ import java.util.Map;
 import n.plugins.newbedwars.NewBedWars;
 import n.plugins.newbedwars.arena.Arena;
 import n.plugins.newbedwars.arena.ArenaTeam;
+import n.plugins.newbedwars.arena.BedWarsMode;
 import n.plugins.newbedwars.arena.TeamColor;
 import n.plugins.newbedwars.npc.BedWarsNpcType;
 import n.plugins.newbedwars.npc.NpcHologram;
@@ -32,6 +33,7 @@ public class NpcManager {
     private static final String DATA_SKIN = "newbedwars:skin";
     private static final String DATA_ARENA = "newbedwars:arena";
     private static final String DATA_TEAM = "newbedwars:team";
+    private static final String DATA_MODE = "newbedwars:mode";
     private final NewBedWars plugin;
     private final Map<Integer, NpcHologram> holograms;
     private final Map<String, Integer> runtimeShopNpcIds;
@@ -74,11 +76,20 @@ public class NpcManager {
     }
 
     public NPC createSoloNpc(Player creator, String skinName) {
-        String npcName = plugin.getConfig().getString("npc.solo.internal-name", "BedWars1v1");
+        return createQueueNpc(creator, BedWarsMode.ONE_VS_ONE, skinName);
+    }
+
+    public NPC createQueueNpc(Player creator, BedWarsMode mode, String skinName) {
+        BedWarsMode npcMode = mode == null ? BedWarsMode.ONE_VS_ONE : mode;
+        String fallbackName = npcMode == BedWarsMode.ONE_VS_ONE
+            ? plugin.getConfig().getString("npc.solo.internal-name", "BedWars1v1")
+            : npcMode.getNpcDefaultName();
+        String npcName = fallbackName;
         NPC npc = CitizensAPI.getNPCRegistry().createNPC(EntityType.PLAYER, npcName);
         npc.setProtected(true);
         npc.data().setPersistent(DATA_TYPE, BedWarsNpcType.SOLO.name());
         npc.data().setPersistent(DATA_SKIN, skinName);
+        npc.data().setPersistent(DATA_MODE, npcMode.getId());
         setMetadataIfPresent(npc, "NAMEPLATE_VISIBLE", false);
         setMetadataIfPresent(npc, "REMOVE_FROM_TABLIST", true);
 
@@ -185,6 +196,16 @@ public class NpcManager {
         }
     }
 
+    public BedWarsMode getMode(NPC npc) {
+        if (npc == null) {
+            return BedWarsMode.ONE_VS_ONE;
+        }
+
+        Object rawMode = npc.data().get(DATA_MODE);
+        BedWarsMode mode = BedWarsMode.fromInput(rawMode == null ? null : rawMode.toString());
+        return mode == null ? BedWarsMode.ONE_VS_ONE : mode;
+    }
+
     public void refreshVisuals() {
         for (NPC npc : CitizensAPI.getNPCRegistry()) {
             if (!isBedWarsNpc(npc)) {
@@ -210,7 +231,7 @@ public class NpcManager {
             return;
         }
 
-        for (TeamColor color : plugin.getTeamManager().getActiveColors()) {
+        for (TeamColor color : plugin.getTeamManager().getActiveColors(arena)) {
             ArenaTeam team = arena.getTeam(color);
             if (team == null) {
                 continue;
@@ -226,7 +247,7 @@ public class NpcManager {
             return;
         }
 
-        for (TeamColor color : plugin.getTeamManager().getActiveColors()) {
+        for (TeamColor color : plugin.getTeamManager().getActiveColors(arena)) {
             removeRuntimeNpc(buildRuntimeKey(arena.getName(), color, BedWarsNpcType.ITEM_SHOP));
             removeRuntimeNpc(buildRuntimeKey(arena.getName(), color, BedWarsNpcType.UPGRADE_SHOP));
         }
@@ -302,13 +323,20 @@ public class NpcManager {
     }
 
     public String formatNpcText(String text) {
+        return formatNpcText(text, BedWarsMode.ONE_VS_ONE);
+    }
+
+    public String formatNpcText(String text, BedWarsMode mode) {
         int playing = 0;
         for (Arena arena : plugin.getArenaManager().getArenas()) {
+            if (mode != null && arena.getMode() != mode) {
+                continue;
+            }
             playing += arena.getPlayerCount();
         }
 
         return text
-            .replace("%mode%", BedWarsNpcType.SOLO.getDisplayName())
+            .replace("%mode%", mode == null ? BedWarsMode.ONE_VS_ONE.getDisplayName() : mode.getDisplayName())
             .replace("%playing%", String.valueOf(playing))
             .replace("%online%", String.valueOf(Bukkit.getOnlinePlayers().size()));
     }
@@ -505,7 +533,7 @@ public class NpcManager {
         if (isUpgradeShopNpc(npc)) {
             return ChatUtil.color(plugin.getConfig().getString("npc.upgrade-shop.hologram-top", "&b&lMELHORIAS"));
         }
-        return ChatUtil.color(formatNpcText(plugin.getConfig().getString("npc.solo.hologram-top", "&b&lBedWars - %mode%")));
+        return ChatUtil.color(formatNpcText(plugin.getConfig().getString("npc.solo.hologram-top", "&b&lBedWars - %mode%"), getMode(npc)));
     }
 
     private String getNpcBottomText(NPC npc) {
@@ -515,7 +543,7 @@ public class NpcManager {
         if (isUpgradeShopNpc(npc)) {
             return ChatUtil.color(plugin.getConfig().getString("npc.upgrade-shop.hologram-bottom", "&eClique para abrir"));
         }
-        return ChatUtil.color(formatNpcText(plugin.getConfig().getString("npc.solo.hologram-bottom", "&e%playing% jogando!")));
+        return ChatUtil.color(formatNpcText(plugin.getConfig().getString("npc.solo.hologram-bottom", "&e%playing% jogando!"), getMode(npc)));
     }
 
     private double getTopLineHeight(NPC npc) {

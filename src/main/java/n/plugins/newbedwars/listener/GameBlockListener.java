@@ -199,7 +199,7 @@ public class GameBlockListener implements Listener {
     }
 
     private ArenaTeam getTeamByTeamChest(Arena arena, Block block) {
-        for (TeamColor color : plugin.getTeamManager().getActiveColors()) {
+        for (TeamColor color : plugin.getTeamManager().getActiveColors(arena)) {
             ArenaTeam team = arena.getTeam(color);
             if (team == null) {
                 continue;
@@ -213,7 +213,7 @@ public class GameBlockListener implements Listener {
     }
 
     private ArenaTeam getTeamByEnderChest(Arena arena, Block block) {
-        for (TeamColor color : plugin.getTeamManager().getActiveColors()) {
+        for (TeamColor color : plugin.getTeamManager().getActiveColors(arena)) {
             ArenaTeam team = arena.getTeam(color);
             if (team == null) {
                 continue;
@@ -227,7 +227,7 @@ public class GameBlockListener implements Listener {
     }
 
     private boolean isItemShop(Arena arena, Block block) {
-        for (TeamColor color : plugin.getTeamManager().getActiveColors()) {
+        for (TeamColor color : plugin.getTeamManager().getActiveColors(arena)) {
             ArenaTeam team = arena.getTeam(color);
             if (LocationUtil.sameBlock(arena.getMatchLocation(team.getItemShopLocation()), block.getLocation())) {
                 return true;
@@ -237,7 +237,7 @@ public class GameBlockListener implements Listener {
     }
 
     private boolean isUpgradeShop(Arena arena, Block block) {
-        for (TeamColor color : plugin.getTeamManager().getActiveColors()) {
+        for (TeamColor color : plugin.getTeamManager().getActiveColors(arena)) {
             ArenaTeam team = arena.getTeam(color);
             if (LocationUtil.sameBlock(arena.getMatchLocation(team.getUpgradeShopLocation()), block.getLocation())) {
                 return true;

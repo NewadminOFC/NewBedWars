@@ -5,6 +5,7 @@ import java.util.Map;
 import java.util.UUID;
 import n.plugins.newbedwars.NewBedWars;
 import n.plugins.newbedwars.arena.Arena;
+import n.plugins.newbedwars.arena.BedWarsMode;
 import n.plugins.newbedwars.arena.TeamColor;
 import n.plugins.newbedwars.npc.BedWarsNpcType;
 import n.plugins.newbedwars.util.SoundUtil;
@@ -112,11 +113,12 @@ public class NpcListener implements Listener {
         }
 
         if (plugin.getNpcManager().isSoloNpc(npc)) {
+            final BedWarsMode mode = plugin.getNpcManager().getMode(npc);
             openMenuNextTick(player, new Runnable() {
                 @Override
                 public void run() {
                     SoundUtil.playConfigured(plugin, player, "sound-effects.npc-open", "CLICK", 1.0F, 1.2F);
-                    plugin.getMenuManager().openSoloQueueMenu(player);
+                    plugin.getMenuManager().openQueueMenu(player, mode);
                 }
             });
             return;

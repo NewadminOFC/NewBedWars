@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.Map;
 import n.plugins.newbedwars.NewBedWars;
 import n.plugins.newbedwars.arena.Arena;
+import n.plugins.newbedwars.arena.BedWarsMode;
 import n.plugins.newbedwars.util.LocationUtil;
 import net.citizensnpcs.api.npc.NPC;
 import org.bukkit.Bukkit;
@@ -43,6 +44,9 @@ public class BedWarsCommand implements CommandExecutor, TabCompleter {
         if (subCommand.equals("list")) {
             return handleList(sender);
         }
+        if (subCommand.equals("mode")) {
+            return handleMode(sender, args);
+        }
         if (subCommand.equals("setup")) {
             return handleSetup(sender, args);
         }
@@ -72,12 +76,12 @@ public class BedWarsCommand implements CommandExecutor, TabCompleter {
         }
 
         if (args.length < 2) {
-            plugin.getMessageManager().send(sender, "errors.invalid-usage", Collections.singletonMap("usage", "/bw create <arena> [world]"));
+            plugin.getMessageManager().send(sender, "errors.invalid-usage", Collections.singletonMap("usage", "/bw create <arena> [world] [mode]"));
             return true;
         }
 
         if (!(sender instanceof Player) && args.length < 3) {
-            plugin.getMessageManager().send(sender, "errors.invalid-usage", Collections.singletonMap("usage", "/bw create <arena> <world>"));
+            plugin.getMessageManager().send(sender, "errors.invalid-usage", Collections.singletonMap("usage", "/bw create <arena> <world> [mode]"));
             return true;
         }
 
@@ -87,10 +91,25 @@ public class BedWarsCommand implements CommandExecutor, TabCompleter {
             return true;
         }
 
-        World world;
+        World world = null;
+        BedWarsMode mode = BedWarsMode.ONE_VS_ONE;
+
         if (args.length >= 3) {
-            world = LocationUtil.ensureWorldLoaded(args[2]);
-            if (world == null) {
+            World explicitWorld = LocationUtil.ensureWorldLoaded(args[2]);
+            BedWarsMode inlineMode = BedWarsMode.fromInput(args[2]);
+
+            if (explicitWorld != null) {
+                world = explicitWorld;
+                if (args.length >= 4) {
+                    mode = parseMode(sender, args[3]);
+                    if (mode == null) {
+                        return true;
+                    }
+                }
+            } else if (inlineMode != null && sender instanceof Player) {
+                world = ((Player) sender).getWorld();
+                mode = inlineMode;
+            } else {
                 plugin.getMessageManager().send(sender, "general.invalid-world");
                 return true;
             }
@@ -98,8 +117,11 @@ public class BedWarsCommand implements CommandExecutor, TabCompleter {
             world = ((Player) sender).getWorld();
         }
 
-        plugin.getArenaManager().createArena(name, world.getName());
-        plugin.getMessageManager().send(sender, "general.arena-created", Collections.singletonMap("arena", name));
+        plugin.getArenaManager().createArena(name, world.getName(), mode);
+        plugin.getMessageManager().send(sender, "general.arena-created", map(
+            "arena", name,
+            "mode", mode.getDisplayName()
+        ));
         return true;
     }
 
@@ -138,11 +160,46 @@ public class BedWarsCommand implements CommandExecutor, TabCompleter {
         for (Arena arena : plugin.getArenaManager().getConfiguredArenas()) {
             sender.sendMessage(plugin.getMessageManager().get("general.arena-list-entry", map(
                 "arena", arena.getName(),
+                "mode", arena.getMode().getDisplayName(),
                 "state", arena.getState().name(),
+                "players", String.valueOf(arena.getMode().getMaxPlayers()),
                 "ready", arena.isReady() ? "§aPronta" : "§cPendente"
             )));
         }
         sender.sendMessage(plugin.getMessageManager().get("general.arena-list-header"));
+        return true;
+    }
+
+    private boolean handleMode(CommandSender sender, String[] args) {
+        if (!hasAdmin(sender)) {
+            return true;
+        }
+
+        if (args.length < 3) {
+            plugin.getMessageManager().send(sender, "errors.invalid-usage", Collections.singletonMap("usage", "/bw mode <arena> <modo>"));
+            return true;
+        }
+
+        Arena arena = plugin.getArenaManager().getConfiguredArena(args[1]);
+        if (arena == null) {
+            plugin.getMessageManager().send(sender, "general.arena-not-found", Collections.singletonMap("arena", args[1]));
+            return true;
+        }
+
+        BedWarsMode mode = parseMode(sender, args[2]);
+        if (mode == null) {
+            return true;
+        }
+
+        arena.setMode(mode);
+        arena.setState(n.plugins.newbedwars.arena.ArenaState.WAITING);
+        plugin.getArenaManager().saveArena(arena);
+        plugin.getSetupManager().refreshArenaSetupVisuals(arena);
+        plugin.getNpcManager().refreshArenaShopNpcs(arena);
+        plugin.getMessageManager().send(sender, "general.mode-updated", map(
+            "arena", arena.getName(),
+            "mode", mode.getDisplayName()
+        ));
         return true;
     }
 
@@ -237,18 +294,20 @@ public class BedWarsCommand implements CommandExecutor, TabCompleter {
         }
 
         if (args.length < 2) {
-            plugin.getMessageManager().send(sender, "errors.invalid-usage", Collections.singletonMap("usage", "/bw npc <1v1|solo|skin|remove> ..."));
+            plugin.getMessageManager().send(sender, "errors.invalid-usage", Collections.singletonMap("usage", "/bw npc <modo|skin|remove> ..."));
             return true;
         }
 
         Player player = (Player) sender;
         String npcCommand = args[1].toLowerCase();
-        if (npcCommand.equals("solo") || npcCommand.equals("1v1")) {
+        BedWarsMode mode = BedWarsMode.fromInput(npcCommand);
+        if (mode != null) {
             String skin = args.length >= 3 ? args[2] : plugin.getConfig().getString("npc.default-skin", "Steve");
-            NPC npc = plugin.getNpcManager().createSoloNpc(player, skin);
+            NPC npc = plugin.getNpcManager().createQueueNpc(player, mode, skin);
             plugin.getMessageManager().send(player, "npc.created", map(
                 "id", String.valueOf(npc.getId()),
-                "skin", skin
+                "skin", skin,
+                "mode", mode.getDisplayName()
             ));
             return true;
         }
@@ -288,7 +347,7 @@ public class BedWarsCommand implements CommandExecutor, TabCompleter {
             return true;
         }
 
-        plugin.getMessageManager().send(sender, "errors.invalid-usage", Collections.singletonMap("usage", "/bw npc <1v1|solo|skin|remove> ..."));
+        plugin.getMessageManager().send(sender, "errors.invalid-usage", Collections.singletonMap("usage", "/bw npc <modo|skin|remove> ..."));
         return true;
     }
 
@@ -301,29 +360,30 @@ public class BedWarsCommand implements CommandExecutor, TabCompleter {
     }
 
     private void sendHelp(CommandSender sender) {
-        sender.sendMessage("Â§8Â§m--------------------------------");
-        sender.sendMessage("Â§b/bw create <arena> [world] Â§7- cria uma arena");
-        sender.sendMessage("Â§b/bw delete <arena> Â§7- remove uma arena");
-        sender.sendMessage("Â§b/bw list Â§7- lista as arenas");
-        sender.sendMessage("Â§b/bw setup <arena> Â§7- entra no setup");
-        sender.sendMessage("Â§b/bw setlobby Â§7- salva o lobby principal");
-        sender.sendMessage("Â§b/bw join <arena> Â§7- entra em uma partida");
-        sender.sendMessage("Â§b/bw leave Â§7- sai da partida");
-        sender.sendMessage("Â§b/bw npc solo [skin] Â§7- cria um NPC SOLO");
-        sender.sendMessage("Â§b/bw npc skin <id> <skin> Â§7- altera a skin do NPC");
-        sender.sendMessage("Â§b/bw npc remove <id> Â§7- remove um NPC");
-        sender.sendMessage("Â§b/lobby Â§7- volta para o lobby");
-        sender.sendMessage("Â§b/bw reload Â§7- recarrega os arquivos");
-        sender.sendMessage("Â§8Â§m--------------------------------");
+        sender.sendMessage("§8§m--------------------------------");
+        sender.sendMessage("§b/bw create <arena> [world] [mode] §7- cria uma arena");
+        sender.sendMessage("§b/bw delete <arena> §7- remove uma arena");
+        sender.sendMessage("§b/bw list §7- lista as arenas");
+        sender.sendMessage("§b/bw mode <arena> <mode> §7- altera o modo da arena");
+        sender.sendMessage("§b/bw setup <arena> §7- entra no setup");
+        sender.sendMessage("§b/bw setlobby §7- salva o lobby principal");
+        sender.sendMessage("§b/bw join <arena> §7- entra em uma partida");
+        sender.sendMessage("§b/bw leave §7- sai da partida");
+        sender.sendMessage("§b/bw npc <mode> [skin] §7- cria um NPC de fila");
+        sender.sendMessage("§b/bw npc skin <id> <skin> §7- altera a skin do NPC");
+        sender.sendMessage("§b/bw npc remove <id> §7- remove um NPC");
+        sender.sendMessage("§b/lobby §7- volta para o lobby");
+        sender.sendMessage("§b/bw reload §7- recarrega os arquivos");
+        sender.sendMessage("§8§m--------------------------------");
     }
 
     @Override
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
         if (args.length == 1) {
-            return partial(args[0], Arrays.asList("create", "delete", "list", "setup", "setlobby", "join", "leave", "npc", "reload"));
+            return partial(args[0], Arrays.asList("create", "delete", "list", "mode", "setup", "setlobby", "join", "leave", "npc", "reload"));
         }
 
-        if (args.length == 2 && Arrays.asList("delete", "setup", "join").contains(args[0].toLowerCase())) {
+        if (args.length == 2 && Arrays.asList("delete", "setup", "join", "mode").contains(args[0].toLowerCase())) {
             List<String> arenas = new ArrayList<String>();
             for (Arena arena : plugin.getArenaManager().getConfiguredArenas()) {
                 arenas.add(arena.getName());
@@ -332,15 +392,27 @@ public class BedWarsCommand implements CommandExecutor, TabCompleter {
         }
 
         if (args.length == 2 && args[0].equalsIgnoreCase("npc")) {
-            return partial(args[1], Arrays.asList("1v1", "solo", "skin", "remove"));
+            List<String> options = new ArrayList<String>(modeOptions());
+            options.add("skin");
+            options.add("remove");
+            return partial(args[1], options);
         }
 
         if (args.length == 3 && args[0].equalsIgnoreCase("create")) {
-            List<String> worlds = new ArrayList<String>();
+            List<String> options = new ArrayList<String>();
             for (World world : Bukkit.getWorlds()) {
-                worlds.add(world.getName());
+                options.add(world.getName());
             }
-            return partial(args[2], worlds);
+            options.addAll(modeOptions());
+            return partial(args[2], options);
+        }
+
+        if (args.length == 3 && args[0].equalsIgnoreCase("mode")) {
+            return partial(args[2], modeOptions());
+        }
+
+        if (args.length == 4 && args[0].equalsIgnoreCase("create")) {
+            return partial(args[3], modeOptions());
         }
 
         return Collections.emptyList();
@@ -362,6 +434,20 @@ public class BedWarsCommand implements CommandExecutor, TabCompleter {
         } catch (NumberFormatException exception) {
             return -1;
         }
+    }
+
+    private BedWarsMode parseMode(CommandSender sender, String raw) {
+        BedWarsMode mode = BedWarsMode.fromInput(raw);
+        if (mode != null) {
+            return mode;
+        }
+
+        plugin.getMessageManager().send(sender, "errors.invalid-mode", Collections.singletonMap("mode", raw));
+        return null;
+    }
+
+    private List<String> modeOptions() {
+        return Arrays.asList("1v1", "2v2", "3v3", "4v4", "solo", "dupla", "trio", "quarteto");
     }
 
     private Map<String, String> map(String... values) {

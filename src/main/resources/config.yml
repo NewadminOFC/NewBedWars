@@ -1277,50 +1277,56 @@ special-items:
       duration-ticks: 120
 
 scoreboard:
+  update-ticks: 10
   title: "&b&lBEDWARS"
   lobby:
-    - "&7%date% | &f%online%"
+    - "&7%date_time%"
     - ""
-    - "&fModo: &b%mode%"
+    - "&fModo: &bMulti"
     - "&fArenas prontas: &a%ready_arenas%"
     - ""
     - "&fnewplugins.com"
   waiting:
-    - "&7%date% | &f%online%"
+    - "&7%date_time%"
     - ""
-    - "&fArena: &b%arena%"
+    - "&fModo: &b%mode%"
     - "&fJogadores: &a%players%&7/&a%max_players%"
     - "&fMinimo: &a%min_players%"
     - ""
-    - "&fnewplugins.com"
+    - "&enewplugins.net"
   starting:
-    - "&7%date% | &f%online%"
+    - "&7%date_time%"
     - ""
-    - "&fArena: &b%arena%"
-    - "&fJogadores: &a%players%&7/&a%max_players%"
+    - "&fModo: &b%mode%"
     - "&fInicio: &a%countdown%s"
+    - "&fJogadores: &a%players%&7/&a%max_players%"
     - "&fSeu time: %team%"
     - ""
-    - "&fbedwars.local"
+    - "&enewplugins.net"
   ingame:
-    - "&7%date% | &f%online%"
+    - "&7%date_time%"
     - ""
     - "&fProximo evento:"
     - "&b%next_event_name%: &a%next_event_time%"
     - ""
     - "%team_line_red%"
     - "%team_line_blue%"
+    - "%team_line_green%"
+    - "%team_line_yellow%"
+    - "%team_line_cyan%"
+    - "%team_line_pink%"
+    - "%team_line_gray%"
+    - "%team_line_white%"
     - ""
-    - "&f%arena%"
-    - "&fnewplugins.com"
+    - "&enewplugins.net"
   ending:
-    - "&7%date% | &f%online%"
+    - "&7%date_time%"
     - ""
-    - "&fArena: &b%arena%"
+    - "&fModo: &b%mode%"
     - "&fVencedor: %winner%"
     - "&fReinicio: &a%countdown%s"
     - ""
-    - "&fnewplugins.com"
+    - "&enewplugins.net"
 
 tablist:
   enabled: true
@@ -1357,7 +1363,31 @@ tablist:
         order: "20"
         prefix: "&b[A] &b"
         suffix: ""
-      default:
+      green:
         order: "30"
+        prefix: "&a[V] &a"
+        suffix: ""
+      yellow:
+        order: "40"
+        prefix: "&e[A] &e"
+        suffix: ""
+      cyan:
+        order: "50"
+        prefix: "&b[C] &b"
+        suffix: ""
+      pink:
+        order: "60"
+        prefix: "&d[R] &d"
+        suffix: ""
+      gray:
+        order: "65"
+        prefix: "&7[C] &7"
+        suffix: ""
+      white:
+        order: "68"
+        prefix: "&f[B] &f"
+        suffix: ""
+      default:
+        order: "90"
         prefix: "&f[?] &f"
         suffix: ""
