@@ -2,6 +2,7 @@ package n.plugins.newbedwars.listener;
 
 import n.plugins.newbedwars.NewBedWars;
 import n.plugins.newbedwars.arena.Arena;
+import n.plugins.newbedwars.arena.ArenaState;
 import n.plugins.newbedwars.menu.BaseMenu;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventPriority;
@@ -67,6 +68,12 @@ public class InventoryListener implements Listener {
             return;
         }
 
+        if (isLockedLobbyInventory(player)) {
+            event.setCancelled(true);
+            player.updateInventory();
+            return;
+        }
+
         if (plugin.getGameManager().isRespawning(player.getUniqueId())
             || isArenaSpectator(player)) {
             event.setCancelled(true);
@@ -107,6 +114,7 @@ public class InventoryListener implements Listener {
         }
 
         if (plugin.getSetupManager().isInSetup(player)
+            || isLockedLobbyInventory(player)
             || plugin.getGameManager().isRespawning(player.getUniqueId())
             || isArenaSpectator(player)) {
             event.setCancelled(true);
@@ -144,6 +152,7 @@ public class InventoryListener implements Listener {
         Player player = event.getPlayer();
         if (plugin.getMenuManager().isViewingMenu(player)
             || plugin.getSetupManager().isInSetup(player)
+            || isLockedLobbyInventory(player)
             || plugin.getGameManager().isRespawning(player.getUniqueId())
             || isArenaSpectator(player)) {
             event.setCancelled(true);
@@ -415,6 +424,20 @@ public class InventoryListener implements Listener {
 
         ItemStack cursor = event.getCursor();
         return cursor != null && plugin.getSetupManager().isMenuItem(cursor);
+    }
+
+    private boolean isLockedLobbyInventory(Player player) {
+        if (player == null) {
+            return false;
+        }
+
+        Arena arena = plugin.getArenaManager().getArenaByPlayer(player.getUniqueId());
+        if (arena == null) {
+            return false;
+        }
+
+        ArenaState state = arena.getState();
+        return state == ArenaState.WAITING || state == ArenaState.STARTING || state == ArenaState.ENDING;
     }
 
     private boolean isArenaSpectator(Player player) {
