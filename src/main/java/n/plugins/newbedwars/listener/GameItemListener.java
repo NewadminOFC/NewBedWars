@@ -58,6 +58,7 @@ public class GameItemListener implements Listener {
     private final NewBedWars plugin;
     private final List<RecentBlast> recentBlasts = new ArrayList<RecentBlast>();
     private final Map<UUID, FallDamageProtection> fallDamageProtections = new HashMap<UUID, FallDamageProtection>();
+    private final Map<UUID, Long> fireballCooldowns = new HashMap<UUID, Long>();
 
     public GameItemListener(NewBedWars plugin) {
         this.plugin = plugin;
@@ -122,7 +123,16 @@ public class GameItemListener implements Listener {
         }
 
         cancelUse(event);
+        long remainingCooldown = getRemainingFireballCooldownMillis(player.getUniqueId());
+        if (remainingCooldown > 0L) {
+            Map<String, String> placeholders = new HashMap<String, String>();
+            placeholders.put("seconds", String.valueOf((int) Math.ceil(remainingCooldown / 1000.0D)));
+            plugin.getMessageManager().send(player, "shops.fireball-cooldown", placeholders);
+            return;
+        }
+
         removeOneFromHand(player);
+        startFireballCooldown(player.getUniqueId());
         launchFireball(player);
     }
 
@@ -621,6 +631,39 @@ public class GameItemListener implements Listener {
         }
 
         player.playSound(player.getLocation(), Sound.GHAST_FIREBALL, 1.0F, 1.15F);
+    }
+
+    private void startFireballCooldown(UUID uniqueId) {
+        if (uniqueId == null) {
+            return;
+        }
+
+        int cooldownSeconds = Math.max(0, plugin.getConfig().getInt("special-items.fireball.cooldown-seconds", 3));
+        if (cooldownSeconds <= 0) {
+            fireballCooldowns.remove(uniqueId);
+            return;
+        }
+
+        fireballCooldowns.put(uniqueId, System.currentTimeMillis() + (cooldownSeconds * 1000L));
+    }
+
+    private long getRemainingFireballCooldownMillis(UUID uniqueId) {
+        if (uniqueId == null) {
+            return 0L;
+        }
+
+        Long expireAt = fireballCooldowns.get(uniqueId);
+        if (expireAt == null) {
+            return 0L;
+        }
+
+        long remaining = expireAt.longValue() - System.currentTimeMillis();
+        if (remaining <= 0L) {
+            fireballCooldowns.remove(uniqueId);
+            return 0L;
+        }
+
+        return remaining;
     }
 
     private void applyExplosionKnockback(Entity explosive, Location origin, double radius, String configPath) {

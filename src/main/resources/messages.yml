@@ -128,6 +128,7 @@ shops:
   upgrades-title: "&8Loja de Melhorias"
   need-currency: "%prefix%&cVoce precisa de &f%amount% %currency%&c."
   buy-success: "%prefix%&aVoce comprou &f%item%&a."
+  fireball-cooldown: "%prefix%&cEspere &f%seconds%s &cpara usar outra fireball."
   sword-already-better: "%prefix%&cVoce ja possui essa espada ou uma melhor."
   armor-already-better: "%prefix%&cVoce ja possui essa armadura ou uma melhor."
   pickaxe-already-maxed: "%prefix%&cSua picareta ja esta no maximo."
