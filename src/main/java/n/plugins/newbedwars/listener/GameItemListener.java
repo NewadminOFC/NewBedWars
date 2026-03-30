@@ -220,6 +220,12 @@ public class GameItemListener implements Listener {
         if (isSupportMob(event.getDamager()) && event.getEntity() instanceof Player) {
             if (!canSupportMobHit(event.getDamager(), (Player) event.getEntity())) {
                 event.setCancelled(true);
+                return;
+            }
+
+            Player owner = getExplosiveOwner(event.getDamager());
+            if (owner != null) {
+                plugin.getGameManager().tagCombat(owner, (Player) event.getEntity());
             }
             return;
         }
@@ -508,6 +514,7 @@ public class GameItemListener implements Listener {
 
         Silverfish silverfish = projectile.getWorld().spawn(spawnLocation, Silverfish.class);
         silverfish.setCustomNameVisible(false);
+        silverfish.setMetadata(META_SPECIAL_OWNER, new FixedMetadataValue(plugin, owner.getUniqueId().toString()));
         int durationSeconds = projectile.hasMetadata(META_SUPPORT_DURATION)
             ? projectile.getMetadata(META_SUPPORT_DURATION).get(0).asInt()
             : 15;
@@ -534,6 +541,7 @@ public class GameItemListener implements Listener {
         } catch (Throwable ignored) {
         }
         golem.setCustomNameVisible(false);
+        golem.setMetadata(META_SPECIAL_OWNER, new FixedMetadataValue(plugin, player.getUniqueId().toString()));
         removeOneFromHand(player);
         startSupportMobTask(golem, arena, color, reward == null ? 240 : reward.getInt("duration-seconds", 240), 18.0D);
     }
@@ -787,6 +795,9 @@ public class GameItemListener implements Listener {
 
             boolean close = distance <= closeDistance;
             boolean self = owner != null && owner.getUniqueId().equals(target.getUniqueId());
+            if (owner != null && !self) {
+                plugin.getGameManager().tagCombat(owner, target);
+            }
             Vector direction = resolveKnockbackDirection(explosive, origin, target, owner, close);
 
             double scale;
@@ -863,6 +874,9 @@ public class GameItemListener implements Listener {
             boolean onTop = horizontalDistance <= topRadius && yDiff >= 0.55D;
             boolean glued = horizontalDistance <= topRadius && yDiff >= -0.40D && yDiff <= 1.20D;
             boolean self = owner != null && owner.getUniqueId().equals(target.getUniqueId());
+            if (owner != null && !self) {
+                plugin.getGameManager().tagCombat(owner, target);
+            }
 
             Vector velocity;
             if (onTop || glued) {

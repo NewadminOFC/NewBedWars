@@ -51,6 +51,8 @@ public class CombatListener implements Listener {
             return;
         }
 
+        plugin.getGameManager().tagCombat(attacker, victim);
+
         if (!isPvpManagerEnabled() || !(event.getDamager() instanceof Player)) {
             return;
         }

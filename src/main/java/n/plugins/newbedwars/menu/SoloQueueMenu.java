@@ -22,7 +22,7 @@ public class SoloQueueMenu extends BaseMenu {
 
     @Override
     protected String getTitle() {
-        return "\u00A78BedWars - " + mode.getDisplayName();
+        return text("menus.queue.title", placeholders("mode", mode.getDisplayName()));
     }
 
     @Override
@@ -33,28 +33,12 @@ public class SoloQueueMenu extends BaseMenu {
     @Override
     protected void draw(Player player) {
         inventory.setItem(11, new ItemBuilder(Material.BED)
-            .name("&bBedWars - " + mode.getDisplayName())
-            .lore(
-                "&7Entre automaticamente",
-                "&7na melhor arena disponivel.",
-                "&7Times: &f" + mode.getActiveColors().size(),
-                "&7Jogadores por time: &f" + mode.getTeamSize(),
-                "&7Maximo: &f" + mode.getMaxPlayers(),
-                "",
-                "&eClique para jogar agora"
-            ).glow().build());
+            .name(text("menus.queue.quick-join.name"))
+            .lore(textList("menus.queue.quick-join.lore", placeholders("mode", mode.getDisplayName()))).glow().build());
 
         inventory.setItem(15, new ItemBuilder(Material.MAP)
-            .name("&eEscolher Arena")
-            .lore(
-                "&7Veja as arenas prontas",
-                "&7e escolha onde entrar.",
-                "&7Modo: &f" + mode.getDisplayName(),
-                "",
-                "&eClique para abrir"
-            ).build());
-
-        inventory.setItem(22, new ItemBuilder(Material.BARRIER).name("&cFechar").build());
+            .name(text("menus.queue.selector.name"))
+            .lore(textList("menus.queue.selector.lore", placeholders("mode", mode.getDisplayName()))).build());
     }
 
     @Override
@@ -64,8 +48,6 @@ public class SoloQueueMenu extends BaseMenu {
             plugin.getGameManager().quickJoin(player, mode);
         } else if (slot == 15) {
             plugin.getMenuManager().openArenaSelectorMenu(player, mode);
-        } else if (slot == 22) {
-            player.closeInventory();
         }
     }
 }

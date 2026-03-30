@@ -219,7 +219,7 @@ public class UpgradeShopMenu extends BaseMenu {
         }
     }
 
-    private Map<String, String> placeholders(String... entries) {
+    protected Map<String, String> placeholders(String... entries) {
         Map<String, String> map = new HashMap<String, String>();
         if (entries == null) {
             return map;

@@ -27,7 +27,8 @@ public class LobbyCommand implements CommandExecutor {
             plugin.getSetupManager().stopSession(player, false);
         }
 
-        if (plugin.getArenaManager().getArenaByPlayer(player.getUniqueId()) != null) {
+        boolean wasInArena = plugin.getArenaManager().getArenaByPlayer(player.getUniqueId()) != null;
+        if (wasInArena) {
             plugin.getGameManager().leaveArena(player, true);
         }
 
@@ -36,7 +37,9 @@ public class LobbyCommand implements CommandExecutor {
             return true;
         }
 
-        plugin.getMessageManager().send(player, "lobby.teleported");
+        if (!wasInArena) {
+            plugin.getMessageManager().send(player, "lobby.teleported");
+        }
         return true;
     }
 }

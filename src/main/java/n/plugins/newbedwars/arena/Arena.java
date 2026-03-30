@@ -34,6 +34,8 @@ public class Arena {
     private final Map<UUID, Integer> playerArmorTiers;
     private final Map<UUID, Integer> playerPickaxeTiers;
     private final Map<UUID, Integer> playerAxeTiers;
+    private final Map<UUID, Integer> playerKills;
+    private final Map<UUID, Integer> playerFinalKills;
     private final Map<BlockPosition, BlockSnapshot> blockSnapshots;
     private final Set<BlockPosition> placedBlocks;
     private BedWarsMode mode;
@@ -70,6 +72,8 @@ public class Arena {
         this.playerArmorTiers = new HashMap<UUID, Integer>();
         this.playerPickaxeTiers = new HashMap<UUID, Integer>();
         this.playerAxeTiers = new HashMap<UUID, Integer>();
+        this.playerKills = new HashMap<UUID, Integer>();
+        this.playerFinalKills = new HashMap<UUID, Integer>();
         this.blockSnapshots = new LinkedHashMap<BlockPosition, BlockSnapshot>();
         this.placedBlocks = new HashSet<BlockPosition>();
         this.mode = BedWarsMode.ONE_VS_ONE;
@@ -343,6 +347,45 @@ public class Arena {
         playerAxeTiers.clear();
     }
 
+    public Map<UUID, Integer> getPlayerKills() {
+        return playerKills;
+    }
+
+    public Map<UUID, Integer> getPlayerFinalKills() {
+        return playerFinalKills;
+    }
+
+    public int getKillCount(UUID uniqueId) {
+        Integer kills = playerKills.get(uniqueId);
+        return kills == null ? 0 : kills.intValue();
+    }
+
+    public int getFinalKillCount(UUID uniqueId) {
+        Integer kills = playerFinalKills.get(uniqueId);
+        return kills == null ? 0 : kills.intValue();
+    }
+
+    public void addKill(UUID uniqueId) {
+        if (uniqueId == null) {
+            return;
+        }
+
+        playerKills.put(uniqueId, Integer.valueOf(getKillCount(uniqueId) + 1));
+    }
+
+    public void addFinalKill(UUID uniqueId) {
+        if (uniqueId == null) {
+            return;
+        }
+
+        playerFinalKills.put(uniqueId, Integer.valueOf(getFinalKillCount(uniqueId) + 1));
+    }
+
+    public void clearKillStats() {
+        playerKills.clear();
+        playerFinalKills.clear();
+    }
+
     public Player getAnyAlivePlayer() {
         for (UUID uniqueId : players) {
             if (spectators.contains(uniqueId)) {
@@ -423,6 +466,7 @@ public class Arena {
         this.playerArmorTiers.clear();
         this.playerPickaxeTiers.clear();
         this.playerAxeTiers.clear();
+        this.clearKillStats();
         this.restoreSnapshots();
         this.clearPlacedBlocks();
         this.clearActiveWorld();

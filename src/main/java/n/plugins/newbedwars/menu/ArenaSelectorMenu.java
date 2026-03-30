@@ -28,7 +28,7 @@ public class ArenaSelectorMenu extends BaseMenu {
 
     @Override
     protected String getTitle() {
-        return "\u00A78Selecionar Arena - " + mode.getDisplayName();
+        return text("menus.arena-selector.title", placeholders("mode", mode.getDisplayName()));
     }
 
     @Override
@@ -42,10 +42,10 @@ public class ArenaSelectorMenu extends BaseMenu {
         List<Arena> arenas = plugin.getGameManager().getJoinableArenas(mode);
         if (arenas.isEmpty()) {
             inventory.setItem(22, new ItemBuilder(Material.BARRIER)
-                .name("&cNenhuma arena disponivel")
-                .lore("&7Crie e valide arenas do modo &f" + mode.getDisplayName() + "&7 para aparecer aqui.")
+                .name(text("menus.arena-selector.empty.name"))
+                .lore(textList("menus.arena-selector.empty.lore", placeholders("mode", mode.getDisplayName())))
                 .build());
-            inventory.setItem(49, new ItemBuilder(Material.ARROW).name("&cVoltar").build());
+            inventory.setItem(49, new ItemBuilder(Material.ARROW).name(text("menus.common.back")).build());
             return;
         }
 
@@ -58,17 +58,15 @@ public class ArenaSelectorMenu extends BaseMenu {
             int mapPlayers = plugin.getArenaManager().countPlayersForTemplate(arena.getTemplateName());
             int openInstances = plugin.getArenaManager().countOpenInstances(arena.getTemplateName());
             inventory.setItem(slot, new ItemBuilder(Material.MAP)
-                .name("&b" + arena.getDisplayName())
-                .lore(
-                    "&7Modo: &f" + arena.getMode().getDisplayName(),
-                    "&7Mundo base: &f" + arena.getWorldName(),
-                    "&7Jogando neste mapa: &f" + mapPlayers,
-                    "&7Instancias abertas: &f" + Math.max(1, openInstances),
-                    "&7Maximo: &f" + arena.getMode().getMaxPlayers(),
-                    "&7Pronta: " + (arena.isReady() ? "\u00A7aSim" : "\u00A7cNao"),
-                    "",
-                    "&eClique para entrar"
-                ).build());
+                .name(text("menus.arena-selector.entry.name", placeholders("arena", arena.getDisplayName())))
+                .lore(textList("menus.arena-selector.entry.lore", placeholders(
+                    "mode", arena.getMode().getDisplayName(),
+                    "world", arena.getWorldName(),
+                    "players_on_map", String.valueOf(mapPlayers),
+                    "open_instances", String.valueOf(Math.max(1, openInstances)),
+                    "max_players", String.valueOf(arena.getMode().getMaxPlayers()),
+                    "ready", arena.isReady() ? text("menus.common.yes") : text("menus.common.no")
+                ))).build());
             arenaBySlot.put(Integer.valueOf(slot), arena.getName());
             slot++;
             if (slot % 9 == 8) {
@@ -76,7 +74,7 @@ public class ArenaSelectorMenu extends BaseMenu {
             }
         }
 
-        inventory.setItem(49, new ItemBuilder(Material.ARROW).name("&cVoltar").build());
+        inventory.setItem(49, new ItemBuilder(Material.ARROW).name(text("menus.common.back")).build());
     }
 
     @Override

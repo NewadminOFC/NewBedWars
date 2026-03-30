@@ -301,7 +301,7 @@ public class BedWarsCommand implements CommandExecutor, TabCompleter {
             arena = plugin.getArenaManager().getArenaByWorld(player.getWorld());
         }
         if (arena == null) {
-            sender.sendMessage(plugin.getMessageManager().get("prefix") + "§cNenhuma arena BedWars foi encontrada neste mundo.");
+            plugin.getMessageManager().send(sender, "game.start-no-arena-world");
             return true;
         }
         if (!plugin.getGameManager().speedUpStart(arena)) {
@@ -309,7 +309,7 @@ public class BedWarsCommand implements CommandExecutor, TabCompleter {
             return true;
         }
 
-        sender.sendMessage(plugin.getMessageManager().get("prefix") + "§aA partida da arena §f" + arena.getDisplayName() + " §avai iniciar mais rapido.");
+        plugin.getMessageManager().send(sender, "game.start-accelerated", Collections.singletonMap("arena", arena.getDisplayName()));
         return true;
     }
 
@@ -324,7 +324,7 @@ public class BedWarsCommand implements CommandExecutor, TabCompleter {
         }
 
         if (args.length < 2) {
-            plugin.getMessageManager().send(sender, "errors.invalid-usage", Collections.singletonMap("usage", "/bw npc <modo|skin|remove> ..."));
+            plugin.getMessageManager().send(sender, "errors.invalid-usage", Collections.singletonMap("usage", "/bw npc <modo> <skin-name>"));
             return true;
         }
 
@@ -377,7 +377,7 @@ public class BedWarsCommand implements CommandExecutor, TabCompleter {
             return true;
         }
 
-        plugin.getMessageManager().send(sender, "errors.invalid-usage", Collections.singletonMap("usage", "/bw npc <modo|skin|remove> ..."));
+        plugin.getMessageManager().send(sender, "errors.invalid-usage", Collections.singletonMap("usage", "/bw npc <modo> <skin-name>"));
         return true;
     }
 
@@ -390,21 +390,9 @@ public class BedWarsCommand implements CommandExecutor, TabCompleter {
     }
 
     private void sendHelp(CommandSender sender) {
-        sender.sendMessage("§8§m--------------------------------");
-        sender.sendMessage("§b/bw create <arena> [world] [mode] §7- cria uma arena");
-        sender.sendMessage("§b/bw delete <arena> §7- remove uma arena");
-        sender.sendMessage("§b/bw list §7- lista as arenas");
-        sender.sendMessage("§b/bw mode <arena> <mode> §7- altera o modo da arena");
-        sender.sendMessage("§b/bw setup <arena> §7- entra no setup");
-        sender.sendMessage("§b/bw setlobby §7- salva o lobby principal");
-        sender.sendMessage("§b/bw join <arena> §7- entra em uma partida");
-        sender.sendMessage("§b/bw leave §7- sai da partida");
-        sender.sendMessage("§b/bw npc <mode> [skin] §7- cria um NPC de fila");
-        sender.sendMessage("§b/bw npc skin <id> <skin> §7- altera a skin do NPC");
-        sender.sendMessage("§b/bw npc remove <id> §7- remove um NPC");
-        sender.sendMessage("§b/lobby §7- volta para o lobby");
-        sender.sendMessage("§b/bw reload §7- recarrega os arquivos");
-        sender.sendMessage("§8§m--------------------------------");
+        for (String line : plugin.getMessageManager().getList("commands.help")) {
+            sender.sendMessage(line);
+        }
     }
 
     @Override

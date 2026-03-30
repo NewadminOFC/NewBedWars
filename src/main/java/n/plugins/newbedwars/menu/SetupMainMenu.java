@@ -26,7 +26,7 @@ public class SetupMainMenu extends BaseMenu {
 
     @Override
     protected String getTitle() {
-        return "\u00A78Setup " + arena.getName();
+        return text("menus.setup-main.title", placeholders("arena", arena.getName()));
     }
 
     @Override
@@ -37,37 +37,35 @@ public class SetupMainMenu extends BaseMenu {
     @Override
     protected void draw(Player player) {
         inventory.setItem(4, new ItemBuilder(Material.BOOK)
-            .name("&bArena: &f" + arena.getName())
-            .lore(
-                "&7Modo: &f" + arena.getMode().getDisplayName(),
-                "&7Times ativos: &f" + arena.getMode().getActiveColors().size(),
-                "&7Jogadores por time: &f" + arena.getMode().getTeamSize(),
-                "&7Maximo: &f" + arena.getMode().getMaxPlayers(),
-                "&7Spawn de espera: " + status(arena.getWaitingSpawn() != null),
-                "&7Area de espera: " + status(arena.getWaitingRegion() != null && arena.getWaitingRegion().isComplete()),
-                "&7Anti-void: " + antiVoidStatus(),
-                "&7Diamante: &f" + arena.getGlobalGenerators(GeneratorType.DIAMOND).size(),
-                "&7Esmeralda: &f" + arena.getGlobalGenerators(GeneratorType.EMERALD).size(),
-                "&7Pronta: " + status(arena.isReady())
-            ).build());
+            .name(text("menus.setup-main.info.name", placeholders("arena", arena.getName())))
+            .lore(textList("menus.setup-main.info.lore", placeholders(
+                "mode", arena.getMode().getDisplayName(),
+                "active_teams", String.valueOf(arena.getMode().getActiveColors().size()),
+                "team_size", String.valueOf(arena.getMode().getTeamSize()),
+                "max_players", String.valueOf(arena.getMode().getMaxPlayers()),
+                "waiting_spawn_status", status(arena.getWaitingSpawn() != null),
+                "waiting_area_status", status(arena.getWaitingRegion() != null && arena.getWaitingRegion().isComplete()),
+                "anti_void_status", antiVoidStatus(),
+                "diamond_count", String.valueOf(arena.getGlobalGenerators(GeneratorType.DIAMOND).size()),
+                "emerald_count", String.valueOf(arena.getGlobalGenerators(GeneratorType.EMERALD).size()),
+                "ready_status", status(arena.isReady())
+            ))).build());
 
-        inventory.setItem(10, action(Material.NETHER_STAR, "&bSpawn de espera", arena.getWaitingSpawn() != null,
-            "&eClique esquerdo para configurar",
-            "&cClique direito para limpar"));
-        inventory.setItem(12, action(Material.WOOD_AXE, "&eArea de espera", arena.getWaitingRegion() != null && arena.getWaitingRegion().isComplete(),
-            "&eClique esquerdo para marcar /pos1 e /pos2",
-            "&cClique direito para limpar"));
-        inventory.setItem(14, action(Material.FEATHER, "&cAnti-void", arena.hasAntiVoidY(),
-            "&eClique esquerdo para salvar o Y atual",
-            "&cClique direito para limpar"));
+        inventory.setItem(10, action(Material.NETHER_STAR, text("menus.setup-main.items.waiting-spawn"), arena.getWaitingSpawn() != null,
+            text("menus.common.left-configure"),
+            text("menus.common.right-clear")));
+        inventory.setItem(12, action(Material.WOOD_AXE, text("menus.setup-main.items.waiting-area"), arena.getWaitingRegion() != null && arena.getWaitingRegion().isComplete(),
+            text("menus.setup-main.items.waiting-area-left"),
+            text("menus.common.right-clear")));
+        inventory.setItem(14, action(Material.FEATHER, text("menus.setup-main.items.anti-void"), arena.hasAntiVoidY(),
+            text("menus.setup-main.items.anti-void-left"),
+            text("menus.common.right-clear")));
         inventory.setItem(16, new ItemBuilder(Material.NAME_TAG)
-            .name("&fModo da arena")
-            .lore(
-                "&7Atual: &b" + arena.getMode().getDisplayName(),
-                "&7Use: &f/bw mode " + arena.getName() + " <modo>",
-                "&7Modos: &f1v1, 2v2, 3v3, 4v4",
-                "&7       &fsolo, dupla, trio, quarteto"
-            ).build());
+            .name(text("menus.setup-main.items.mode.name"))
+            .lore(textList("menus.setup-main.items.mode.lore", placeholders(
+                "mode", arena.getMode().getDisplayName(),
+                "arena", arena.getName()
+            ))).build());
 
         List<TeamColor> activeColors = plugin.getTeamManager().getActiveColors(arena);
         List<Integer> teamSlots = resolveTeamSlots(activeColors.size());
@@ -76,33 +74,27 @@ public class SetupMainMenu extends BaseMenu {
             ArenaTeam team = arena.getTeam(color);
             inventory.setItem(teamSlots.get(index).intValue(), new ItemBuilder(Material.WOOL, 1, color.getWoolData())
                 .name(color.getColoredName())
-                .lore(
-                    "&7Status: " + status(team.isSetupComplete()),
-                    "&7Confirmado: " + status(team.isConfirmed()),
-                    "&7" + team.getProgressLine(),
-                    "",
-                    "&eClique para configurar o time"
-                ).build());
+                .lore(textList("menus.setup-main.items.team.lore", placeholders(
+                    "status", status(team.isSetupComplete()),
+                    "confirmed", status(team.isConfirmed()),
+                    "progress", team.getProgressLine()
+                ))).build());
         }
 
-        inventory.setItem(37, action(Material.DIAMOND, "&bGeradores de diamante", !arena.getGlobalGenerators(GeneratorType.DIAMOND).isEmpty(),
-            "&eClique esquerdo para adicionar mais um",
-            "&cClique direito para limpar todos"));
-        inventory.setItem(39, action(Material.EMERALD, "&aGeradores de esmeralda", !arena.getGlobalGenerators(GeneratorType.EMERALD).isEmpty(),
-            "&eClique esquerdo para adicionar mais um",
-            "&cClique direito para limpar todos"));
+        inventory.setItem(37, action(Material.DIAMOND, text("menus.setup-main.items.diamond-generators"), !arena.getGlobalGenerators(GeneratorType.DIAMOND).isEmpty(),
+            text("menus.setup-main.items.generator-left"),
+            text("menus.setup-main.items.generator-right")));
+        inventory.setItem(39, action(Material.EMERALD, text("menus.setup-main.items.emerald-generators"), !arena.getGlobalGenerators(GeneratorType.EMERALD).isEmpty(),
+            text("menus.setup-main.items.generator-left"),
+            text("menus.setup-main.items.generator-right")));
         inventory.setItem(41, buildModeItem(player));
 
         inventory.setItem(43, new ItemBuilder(Material.EMERALD_BLOCK)
-            .name("&aFinalizar")
-            .lore(
-                "&7Modo: &f" + arena.getMode().getDisplayName(),
-                "&7Times ativos: &f" + arena.getMode().getActiveColors().size(),
-                "&7Valida toda a arena",
-                "&7e marca como pronta.",
-                "",
-                "&eClique para continuar"
-            ).glow().build());
+            .name(text("menus.setup-main.items.finish.name"))
+            .lore(textList("menus.setup-main.items.finish.lore", placeholders(
+                "mode", arena.getMode().getDisplayName(),
+                "active_teams", String.valueOf(arena.getMode().getActiveColors().size())
+            ))).glow().build());
     }
 
     @Override
@@ -176,46 +168,36 @@ public class SetupMainMenu extends BaseMenu {
     private ItemStack action(Material material, String title, boolean configured, String leftClick, String rightClick) {
         return new ItemBuilder(material)
             .name(title)
-            .lore(
-                "&7Status: " + status(configured),
-                "",
-                leftClick,
-                rightClick
-            ).build();
+            .lore(textList("menus.setup-main.action.lore", placeholders(
+                "status", status(configured),
+                "left_click", leftClick,
+                "right_click", rightClick
+            ))).build();
     }
 
     private String status(boolean configured) {
-        return configured ? "\u00A7aOK" : "\u00A7cPendente";
+        return configured ? text("menus.common.ok") : text("menus.common.pending");
     }
 
     private String antiVoidStatus() {
         if (!arena.hasAntiVoidY()) {
-            return "\u00A7cPendente";
+            return text("menus.common.pending");
         }
         double value = arena.getAntiVoidY().doubleValue();
         double rounded = Math.rint(value);
         if (Math.abs(value - rounded) < 0.001D) {
-            return "\u00A7aY " + (int) rounded;
+            return text("menus.setup-main.info.anti-void-value", placeholders("value", String.valueOf((int) rounded)));
         }
-        return "\u00A7aY " + String.format(java.util.Locale.US, "%.1f", value);
+        return text("menus.setup-main.info.anti-void-value", placeholders("value", String.format(java.util.Locale.US, "%.1f", value)));
     }
 
     private ItemStack buildModeItem(Player player) {
         boolean enabled = plugin.getSetupManager().isBuildModeEnabled(player);
         ItemBuilder builder = new ItemBuilder(Material.BRICK)
-            .name("&6Modo build")
-            .lore(
-                "&7Status: " + status(enabled),
-                "",
-                "&7Quando ativo:",
-                "&f- Criativo liberado",
-                "&f- Pode colocar e quebrar blocos",
-                "&f- Nao pode dropar itens",
-                "&f- Nao abre bau nem ender chest",
-                "&f- Ultimo slot fica protegido",
-                "",
-                "&eClique para alternar"
-            );
+            .name(text("menus.setup-main.items.build-mode.name"))
+            .lore(textList("menus.setup-main.items.build-mode.lore", placeholders(
+                "status", status(enabled)
+            )));
         if (enabled) {
             builder.glow();
         }

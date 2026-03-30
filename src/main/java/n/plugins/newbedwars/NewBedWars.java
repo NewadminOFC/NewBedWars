@@ -81,7 +81,7 @@ public final class NewBedWars extends JavaPlugin {
         this.scoreboardManager.start();
         this.npcManager.start();
 
-        printBanner();
+        printConfiguredBanner();
     }
 
     @Override
@@ -148,6 +148,17 @@ public final class NewBedWars extends JavaPlugin {
         java.io.File folder = new java.io.File(getDataFolder(), "arenas");
         if (!folder.exists()) {
             folder.mkdirs();
+        }
+    }
+
+    private void printConfiguredBanner() {
+        java.util.List<String> lines = getConfig().getStringList("console.banner");
+        if (lines == null || lines.isEmpty()) {
+            printBanner();
+            return;
+        }
+        for (String line : lines) {
+            Bukkit.getConsoleSender().sendMessage(org.bukkit.ChatColor.translateAlternateColorCodes('&', line));
         }
     }
 

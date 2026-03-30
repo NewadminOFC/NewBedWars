@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -23,14 +24,20 @@ import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
 import org.bukkit.Location;
 import org.bukkit.Material;
+import org.bukkit.OfflinePlayer;
 import org.bukkit.Sound;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockState;
+import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
+import org.bukkit.entity.Projectile;
 import org.bukkit.event.entity.PlayerDeathEvent;
+import org.bukkit.event.entity.EntityDamageByEntityEvent;
+import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.player.PlayerRespawnEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.potion.PotionEffect;
+import org.bukkit.projectiles.ProjectileSource;
 
 public class GameManager {
 
@@ -38,7 +45,10 @@ public class GameManager {
     private final Map<UUID, PlayerSnapshot> snapshots;
     private final Map<UUID, PendingRespawn> pendingRespawns;
     private final Map<UUID, Integer> respawnTasks;
+    private final Map<UUID, DamageTag> recentDamagers;
     private int taskId = -1;
+
+    private static final long COMBAT_TAG_MILLIS = 10000L;
 
     private static class PendingRespawn {
 
@@ -65,11 +75,23 @@ public class GameManager {
         }
     }
 
+    private static class DamageTag {
+
+        private final UUID attackerUniqueId;
+        private final long expireAt;
+
+        private DamageTag(UUID attackerUniqueId, long expireAt) {
+            this.attackerUniqueId = attackerUniqueId;
+            this.expireAt = expireAt;
+        }
+    }
+
     public GameManager(NewBedWars plugin) {
         this.plugin = plugin;
         this.snapshots = new HashMap<UUID, PlayerSnapshot>();
         this.pendingRespawns = new HashMap<UUID, PendingRespawn>();
         this.respawnTasks = new HashMap<UUID, Integer>();
+        this.recentDamagers = new HashMap<UUID, DamageTag>();
     }
 
     public void start() {
@@ -118,6 +140,37 @@ public class GameManager {
 
     public boolean isRespawning(UUID uniqueId) {
         return uniqueId != null && pendingRespawns.containsKey(uniqueId);
+    }
+
+    public void tagCombat(Player attacker, Player victim) {
+        if (attacker == null || victim == null) {
+            return;
+        }
+
+        if (attacker.getUniqueId().equals(victim.getUniqueId())) {
+            return;
+        }
+
+        Arena attackerArena = plugin.getArenaManager().getArenaByPlayer(attacker.getUniqueId());
+        Arena victimArena = plugin.getArenaManager().getArenaByPlayer(victim.getUniqueId());
+        if (attackerArena == null || victimArena == null || attackerArena != victimArena || attackerArena.getState() != ArenaState.INGAME) {
+            return;
+        }
+
+        if (attackerArena.getSpectators().contains(attacker.getUniqueId())
+            || attackerArena.getSpectators().contains(victim.getUniqueId())
+            || isRespawning(attacker.getUniqueId())
+            || isRespawning(victim.getUniqueId())) {
+            return;
+        }
+
+        TeamColor attackerColor = plugin.getTeamManager().getColor(attackerArena, attacker.getUniqueId());
+        TeamColor victimColor = plugin.getTeamManager().getColor(attackerArena, victim.getUniqueId());
+        if (attackerColor != null && attackerColor == victimColor) {
+            return;
+        }
+
+        recentDamagers.put(victim.getUniqueId(), new DamageTag(attacker.getUniqueId(), System.currentTimeMillis() + COMBAT_TAG_MILLIS));
     }
 
     public void giveWaitingLobbyItems(Player player) {
@@ -288,16 +341,17 @@ public class GameManager {
         boolean wasPreGame = previousState == ArenaState.WAITING || previousState == ArenaState.STARTING;
         ArenaTeam leavingTeam = plugin.getTeamManager().getTeam(arena, player.getUniqueId());
         clearPendingRespawn(player.getUniqueId());
+        clearCombatState(player.getUniqueId());
         arena.removePlayer(player.getUniqueId());
         plugin.getTeamManager().unassign(arena, player.getUniqueId());
+        boolean teamEliminatedOnLeave = leavingTeam != null && leavingTeam.isEliminated();
         plugin.getArenaManager().clearPlayerArena(player.getUniqueId());
         plugin.getScoreboardManager().clear(player);
 
         if (restorePlayer) {
             restorePlayer(player, plugin.getLobbyManager().getMainWorldSpawn());
+            plugin.getMessageManager().send(player, "lobby.teleported");
         }
-
-        plugin.getMessageManager().send(player, "game.left");
         if (wasPreGame) {
             broadcast(arena, "game.leave-broadcast", placeholders(
                 "player", player.getName(),
@@ -311,6 +365,11 @@ public class GameManager {
                 "players", String.valueOf(arena.getPlayerCount()),
                 "max_players", String.valueOf(getArenaCapacity(arena))
             ));
+            if (teamEliminatedOnLeave) {
+                broadcastSilently(arena, "game.team-eliminated", placeholders(
+                    "team", leavingTeam.getColor().getColoredName()
+                ));
+            }
         }
 
         if (wasIngame) {
@@ -340,8 +399,14 @@ public class GameManager {
             return;
         }
 
+        boolean finalDeath = team.isBedDestroyed();
+        UUID killerUniqueId = resolveKillerUniqueId(player);
+        announceDeath(arena, player, killerUniqueId, finalDeath);
+        registerKill(arena, killerUniqueId, finalDeath);
+        clearCombatState(player.getUniqueId());
+
         Location spectatorLocation = resolveDeathSpectatorLocation(arena);
-        if (team.isBedDestroyed()) {
+        if (finalDeath) {
             arena.getSpectators().add(player.getUniqueId());
             pendingRespawns.put(player.getUniqueId(), new PendingRespawn(spectatorLocation, spectatorLocation, true));
             plugin.getMessageManager().send(player, "game.death-final");
@@ -377,12 +442,20 @@ public class GameManager {
                     }
 
                     if (pendingRespawn.isFinalDeath()) {
+                        ArenaTeam finalTeam = plugin.getTeamManager().getTeam(arena, player.getUniqueId());
+                        boolean wasEliminated = finalTeam != null && finalTeam.isEliminated();
                         makeSpectator(player, arena);
                         if (pendingRespawn.getSpectatorLocation() != null) {
                             teleportSafely(player, pendingRespawn.getSpectatorLocation());
                         }
                         sendConfiguredTitle(player, "titles.game.final-death", Collections.<String, String>emptyMap(), 5, 50, 10);
                         clearPendingRespawn(player.getUniqueId());
+                        plugin.getTeamManager().updateEliminationState(arena);
+                        if (finalTeam != null && finalTeam.isEliminated() && !wasEliminated) {
+                            broadcastSilently(arena, "game.team-eliminated", placeholders(
+                                "team", finalTeam.getColor().getColoredName()
+                            ));
+                        }
                         checkWin(arena);
                         return;
                     }
@@ -440,7 +513,7 @@ public class GameManager {
         team.setBedDestroyed(true);
         broadcast(arena, "game.bed-destroyed", placeholders(
             "team", team.getColor().getColoredName(),
-            "player", breaker.getName()
+            "player", resolveColoredPlayerName(arena, breaker.getUniqueId())
         ));
 
         for (UUID uniqueId : arena.getPlayers()) {
@@ -455,7 +528,7 @@ public class GameManager {
                 SoundUtil.playConfigured(plugin, member, "sound-effects.own-bed-destroyed", "WITHER_DEATH", 1.0F, 1.0F);
                 sendConfiguredTitle(member, "titles.game.bed-destroyed", placeholders(
                     "team", team.getColor().getColoredName(),
-                    "player", breaker.getName()
+                    "player", resolveColoredPlayerName(arena, breaker.getUniqueId())
                 ), 5, 60, 10);
             } else {
                 SoundUtil.playConfigured(plugin, member, "sound-effects.bed-destroyed", "ENDERDRAGON_GROWL", 0.8F, 1.1F);
@@ -472,12 +545,13 @@ public class GameManager {
         arena.setEndCountdown(Math.max(1, plugin.getConfig().getInt("settings.ending-seconds", 15)));
 
         if (winner != null) {
-            broadcast(arena, "game.winner", placeholders("team", winner.getColoredName(), "arena", arena.getDisplayName()));
+            broadcastSilently(arena, "game.winner", placeholders("team", winner.getColoredName(), "arena", arena.getDisplayName()));
         } else {
-            broadcast(arena, "game.draw", Collections.<String, String>emptyMap());
+            broadcastSilently(arena, "game.draw", Collections.<String, String>emptyMap());
         }
 
         giveEndingLobbyItems(arena);
+        sendVictorySummary(arena, winner);
         playEndGameSounds(arena, winner);
         sendEndGameTitles(arena, winner);
     }
@@ -492,6 +566,7 @@ public class GameManager {
 
         for (UUID uniqueId : new ArrayList<UUID>(arena.getPlayers())) {
             clearPendingRespawn(uniqueId);
+            clearCombatState(uniqueId);
             Player player = Bukkit.getPlayer(uniqueId);
             if (player != null && player.isOnline()) {
                 restorePlayer(player, plugin.getLobbyManager().getMainWorldSpawn());
@@ -506,6 +581,7 @@ public class GameManager {
         arena.getSpectators().clear();
         arena.getPlayerTeams().clear();
         arena.clearArmorTiers();
+        arena.clearKillStats();
         arena.setCountdown(0);
         arena.setElapsedTime(0);
         arena.setEndCountdown(0);
@@ -606,11 +682,12 @@ public class GameManager {
         }
 
         if (!plugin.getWorldCloneManager().ensureClone(arena)) {
-            player.sendMessage(plugin.getMessageManager().get("prefix") + ChatUtil.color("&cNao foi possivel preparar o clone do mapa desta arena."));
+            plugin.getMessageManager().send(player, "game.clone-prepare-failed");
             return;
         }
 
         snapshots.put(player.getUniqueId(), PlayerSnapshot.capture(player));
+        clearCombatState(player.getUniqueId());
         preparePlayer(player);
         player.getEnderChest().clear();
 
@@ -672,7 +749,9 @@ public class GameManager {
         arena.setState(ArenaState.INGAME);
         arena.markMatchStarted();
         arena.setElapsedTime(0);
+        arena.clearKillStats();
         arena.clearSnapshots();
+        clearArenaCombatTags(arena);
         assignRandomTeams(arena);
 
         for (ArenaTeam team : arena.getTeams().values()) {
@@ -776,6 +855,7 @@ public class GameManager {
     private void makeSpectator(Player player, Arena arena) {
         arena.getSpectators().add(player.getUniqueId());
         applySpectatorState(player);
+        giveSpectatorLeaveItem(player, arena);
         plugin.getMessageManager().send(player, "game.spectator");
     }
 
@@ -797,6 +877,16 @@ public class GameManager {
         player.setFlying(canFly);
         player.setCanPickupItems(false);
         player.setFallDistance(0.0F);
+        player.updateInventory();
+    }
+
+    private void giveSpectatorLeaveItem(Player player, Arena arena) {
+        if (player == null || arena == null || arena.getState() != ArenaState.INGAME) {
+            return;
+        }
+
+        int leaveSlot = resolveHotbarSlot("pre-game-items.leave-arena.slot", 8);
+        player.getInventory().setItem(leaveSlot, createLeaveArenaItem());
         player.updateInventory();
     }
 
@@ -838,7 +928,8 @@ public class GameManager {
 
                 player.setLevel(seconds[0]);
                 if (plugin.getConfig().getBoolean("settings.respawn-countdown-chat", false)) {
-                    player.sendMessage(plugin.getMessageManager().get("prefix") + ChatUtil.color("&aRespawn em &f" + seconds[0] + "s&a."));
+                    plugin.getMessageManager().send(player, "game.respawn-countdown-chat",
+                        Collections.singletonMap("seconds", String.valueOf(seconds[0])));
                 }
                 sendConfiguredTitle(player, "titles.game.respawn-countdown", Collections.singletonMap("seconds", String.valueOf(seconds[0])), 0, 25, 0);
                 seconds[0]--;
@@ -857,6 +948,282 @@ public class GameManager {
         Integer task = respawnTasks.remove(uniqueId);
         if (task != null) {
             Bukkit.getScheduler().cancelTask(task.intValue());
+        }
+    }
+
+    private UUID resolveKillerUniqueId(Player victim) {
+        if (victim == null) {
+            return null;
+        }
+
+        UUID direct = resolveDirectAttackerUniqueId(victim.getLastDamageCause());
+        if (direct != null && !direct.equals(victim.getUniqueId())) {
+            return direct;
+        }
+
+        UUID tagged = resolveTaggedKillerUniqueId(victim);
+        if (tagged != null && !tagged.equals(victim.getUniqueId())) {
+            return tagged;
+        }
+
+        return null;
+    }
+
+    private UUID resolveDirectAttackerUniqueId(EntityDamageEvent event) {
+        if (!(event instanceof EntityDamageByEntityEvent)) {
+            return null;
+        }
+
+        return resolveAttackerUniqueId(((EntityDamageByEntityEvent) event).getDamager());
+    }
+
+    private UUID resolveAttackerUniqueId(Entity damager) {
+        if (damager instanceof Player) {
+            return ((Player) damager).getUniqueId();
+        }
+
+        if (damager instanceof Projectile) {
+            ProjectileSource shooter = ((Projectile) damager).getShooter();
+            if (shooter instanceof Player) {
+                return ((Player) shooter).getUniqueId();
+            }
+        }
+
+        return null;
+    }
+
+    private UUID resolveTaggedKillerUniqueId(Player victim) {
+        if (victim == null) {
+            return null;
+        }
+
+        DamageTag damageTag = recentDamagers.get(victim.getUniqueId());
+        if (damageTag == null) {
+            return null;
+        }
+
+        if (damageTag.expireAt <= System.currentTimeMillis()) {
+            recentDamagers.remove(victim.getUniqueId());
+            return null;
+        }
+
+        Arena victimArena = plugin.getArenaManager().getArenaByPlayer(victim.getUniqueId());
+        Arena attackerArena = plugin.getArenaManager().getArenaByPlayer(damageTag.attackerUniqueId);
+        if (victimArena == null || attackerArena == null || victimArena != attackerArena) {
+            recentDamagers.remove(victim.getUniqueId());
+            return null;
+        }
+
+        return damageTag.attackerUniqueId;
+    }
+
+    private void registerKill(Arena arena, UUID killerUniqueId, boolean finalKill) {
+        if (arena == null
+            || killerUniqueId == null
+            || !arena.getPlayers().contains(killerUniqueId)
+            || arena.getSpectators().contains(killerUniqueId)
+            || isRespawning(killerUniqueId)) {
+            return;
+        }
+
+        arena.addKill(killerUniqueId);
+        if (finalKill) {
+            arena.addFinalKill(killerUniqueId);
+        }
+    }
+
+    private void announceDeath(Arena arena, Player victim, UUID killerUniqueId, boolean finalDeath) {
+        if (arena == null || victim == null) {
+            return;
+        }
+
+        Map<String, String> values = new HashMap<String, String>();
+        values.put("victim", victim.getName());
+        values.put("victim_colored", resolveColoredPlayerName(arena, victim.getUniqueId()));
+        values.put("victim_team", resolveTeamPrefix(arena, victim.getUniqueId()));
+
+        if (killerUniqueId != null) {
+            values.put("killer", resolvePlayerName(killerUniqueId));
+            values.put("killer_colored", resolveColoredPlayerName(arena, killerUniqueId));
+            values.put("killer_team", resolveTeamPrefix(arena, killerUniqueId));
+            broadcastSilently(arena, finalDeath ? "game.final-kill" : "game.kill", values);
+            return;
+        }
+
+        EntityDamageEvent cause = victim.getLastDamageCause();
+        if (cause != null && cause.getCause() == EntityDamageEvent.DamageCause.VOID) {
+            broadcastSilently(arena, finalDeath ? "game.final-kill-void" : "game.kill-void", values);
+            return;
+        }
+
+        broadcastSilently(arena, finalDeath ? "game.final-kill-generic" : "game.kill-generic", values);
+    }
+
+    private void clearCombatState(UUID uniqueId) {
+        if (uniqueId == null) {
+            return;
+        }
+
+        recentDamagers.remove(uniqueId);
+
+        Iterator<Map.Entry<UUID, DamageTag>> iterator = recentDamagers.entrySet().iterator();
+        while (iterator.hasNext()) {
+            Map.Entry<UUID, DamageTag> entry = iterator.next();
+            DamageTag tag = entry.getValue();
+            if (tag == null || tag.expireAt <= System.currentTimeMillis() || uniqueId.equals(tag.attackerUniqueId)) {
+                iterator.remove();
+            }
+        }
+    }
+
+    private void clearArenaCombatTags(Arena arena) {
+        if (arena == null) {
+            return;
+        }
+
+        for (UUID uniqueId : new ArrayList<UUID>(arena.getPlayers())) {
+            clearCombatState(uniqueId);
+        }
+    }
+
+    private void sendVictorySummary(Arena arena, TeamColor winner) {
+        if (arena == null) {
+            return;
+        }
+
+        List<String> lines = new ArrayList<String>();
+        lines.add(plugin.getMessageManager().get("game.victory-summary-header"));
+        lines.add(plugin.getMessageManager().get("game.victory-summary-title"));
+        lines.add(plugin.getMessageManager().get("game.victory-summary-winner", placeholders(
+            "winner", resolveWinnerDisplay(arena, winner)
+        )));
+        lines.add("");
+
+        List<Map.Entry<UUID, Integer>> topFinalKills = getTopFinalKills(arena);
+        if (topFinalKills.isEmpty()) {
+            lines.add(plugin.getMessageManager().get("game.victory-summary-empty"));
+        } else {
+            int limit = Math.min(3, topFinalKills.size());
+            for (int i = 0; i < limit; i++) {
+                Map.Entry<UUID, Integer> entry = topFinalKills.get(i);
+                lines.add(plugin.getMessageManager().get("game.victory-summary-entry", placeholders(
+                    "position", formatVictoryPosition(i + 1),
+                    "player", resolveColoredPlayerName(arena, entry.getKey()),
+                    "kills", String.valueOf(entry.getValue())
+                )));
+            }
+        }
+
+        lines.add(plugin.getMessageManager().get("game.victory-summary-footer"));
+
+        for (UUID uniqueId : arena.getPlayers()) {
+            Player player = Bukkit.getPlayer(uniqueId);
+            if (player == null || !player.isOnline()) {
+                continue;
+            }
+
+            for (String line : lines) {
+                player.sendMessage(line == null ? "" : line);
+            }
+        }
+    }
+
+    private String resolveWinnerDisplay(Arena arena, TeamColor winner) {
+        if (winner == null) {
+            return "&7Ninguem";
+        }
+
+        if (arena == null || arena.getMode().getTeamSize() > 1) {
+            return winner.getColoredName();
+        }
+
+        for (UUID uniqueId : plugin.getTeamManager().getPlayersInTeam(arena, winner)) {
+            if (!arena.getSpectators().contains(uniqueId)) {
+                return resolvePlayerName(uniqueId);
+            }
+        }
+
+        List<UUID> members = plugin.getTeamManager().getPlayersInTeam(arena, winner);
+        if (!members.isEmpty()) {
+            return resolvePlayerName(members.get(0));
+        }
+
+        return winner.getColoredName();
+    }
+
+    private List<Map.Entry<UUID, Integer>> getTopFinalKills(Arena arena) {
+        List<Map.Entry<UUID, Integer>> top = new ArrayList<Map.Entry<UUID, Integer>>();
+        if (arena == null) {
+            return top;
+        }
+
+        for (Map.Entry<UUID, Integer> entry : arena.getPlayerFinalKills().entrySet()) {
+            if (entry.getValue() == null || entry.getValue().intValue() <= 0) {
+                continue;
+            }
+            top.add(entry);
+        }
+
+        Collections.sort(top, new Comparator<Map.Entry<UUID, Integer>>() {
+            @Override
+            public int compare(Map.Entry<UUID, Integer> first, Map.Entry<UUID, Integer> second) {
+                int killCompare = Integer.compare(second.getValue().intValue(), first.getValue().intValue());
+                if (killCompare != 0) {
+                    return killCompare;
+                }
+                return resolvePlayerName(first.getKey()).compareToIgnoreCase(resolvePlayerName(second.getKey()));
+            }
+        });
+        return top;
+    }
+
+    private String formatVictoryPosition(int position) {
+        return position + "o";
+    }
+
+    private String resolvePlayerName(UUID uniqueId) {
+        if (uniqueId == null) {
+            return "Desconhecido";
+        }
+
+        Player online = Bukkit.getPlayer(uniqueId);
+        if (online != null) {
+            return online.getName();
+        }
+
+        OfflinePlayer offline = Bukkit.getOfflinePlayer(uniqueId);
+        if (offline != null && offline.getName() != null && !offline.getName().trim().isEmpty()) {
+            return offline.getName();
+        }
+
+        return uniqueId.toString().substring(0, 8);
+    }
+
+    private String resolveColoredPlayerName(Arena arena, UUID uniqueId) {
+        return resolveTeamPrefix(arena, uniqueId) + resolvePlayerName(uniqueId);
+    }
+
+    private String resolveTeamPrefix(Arena arena, UUID uniqueId) {
+        if (arena == null || uniqueId == null) {
+            return "&7";
+        }
+
+        TeamColor color = plugin.getTeamManager().getColor(arena, uniqueId);
+        return color == null ? "&7" : color.getChatColor().toString();
+    }
+
+    private void broadcastSilently(Arena arena, String path, Map<String, String> placeholders) {
+        if (arena == null) {
+            return;
+        }
+
+        for (UUID uniqueId : arena.getPlayers()) {
+            Player player = Bukkit.getPlayer(uniqueId);
+            if (player == null || !player.isOnline()) {
+                continue;
+            }
+
+            plugin.getMessageManager().send(player, path, placeholders);
         }
     }
 

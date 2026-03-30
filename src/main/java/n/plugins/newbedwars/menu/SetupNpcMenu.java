@@ -24,7 +24,7 @@ public class SetupNpcMenu extends BaseMenu {
 
     @Override
     protected String getTitle() {
-        return "§8NPC " + type.getDisplayName();
+        return text("menus.setup-npc.title", placeholders("type", type.getDisplayName()));
     }
 
     @Override
@@ -35,16 +35,14 @@ public class SetupNpcMenu extends BaseMenu {
     @Override
     protected void draw(Player player) {
         inventory.setItem(11, new ItemBuilder(Material.BARRIER)
-            .name("&cRemover NPC")
-            .lore(
-                "&7Remove o NPC de " + type.getDisplayName(),
-                "&7do time " + color.getColoredName(),
-                "",
-                "&eClique para remover"
-            ).build());
+            .name(text("menus.setup-npc.remove.name"))
+            .lore(textList("menus.setup-npc.remove.lore", placeholders(
+                "type", type.getDisplayName(),
+                "team", color.getColoredName()
+            ))).build());
         inventory.setItem(15, new ItemBuilder(Material.ARROW)
-            .name("&aVoltar")
-            .lore("&7Retorna para o setup do time").build());
+            .name(text("menus.common.back-green"))
+            .lore(textList("menus.setup-npc.back.lore")).build());
     }
 
     @Override

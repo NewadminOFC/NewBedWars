@@ -539,7 +539,10 @@ public class SetupManager {
         plugin.getArenaManager().saveArena(arena);
         plugin.getNpcManager().refreshArenaShopNpcs(arena);
         refreshArenaSetupVisuals(arena);
-        player.sendMessage(plugin.getMessageManager().get("prefix") + ChatUtil.color("&eNPC de &f" + type.getDisplayName() + " &eremovido do time " + color.getColoredName() + "&e."));
+        java.util.Map<String, String> placeholders = new java.util.HashMap<String, String>();
+        placeholders.put("type", type.getDisplayName());
+        placeholders.put("team", color.getColoredName());
+        plugin.getMessageManager().send(player, "setup.npc-removed", placeholders);
         sendTeamChangedMessage(player, team, wasConfirmed);
         plugin.getMenuManager().openTeamSetupMenu(player, arena, color);
     }

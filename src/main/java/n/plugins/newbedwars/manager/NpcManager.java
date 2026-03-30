@@ -101,6 +101,7 @@ public class NpcManager {
         skinTrait.setSkinName(skinName, true);
 
         normalizeSoloNpcName(npc);
+        applyStoredSoloSkin(npc);
         npc.spawn(creator.getLocation());
         normalizeSoloNpcName(npc);
         hideNameplate(npc);
@@ -219,6 +220,9 @@ public class NpcManager {
 
             if (usesHologram(npc)) {
                 normalizeSoloNpcName(npc);
+                if (isSoloNpc(npc)) {
+                    hideNameplate(npc);
+                }
                 updateHologram(npc);
             } else {
                 removeHologram(npc.getId());
@@ -303,13 +307,20 @@ public class NpcManager {
                 continue;
             }
 
-            if (npc.getName() == null || npc.getName().trim().isEmpty()) {
-                continue;
+            addHiddenEntry(team, npc.getName());
+            if (npc.isSpawned() && npc.getEntity() != null) {
+                addHiddenEntry(team, npc.getEntity().getName());
             }
+        }
+    }
 
-            if (!team.hasEntry(npc.getName())) {
-                team.addEntry(npc.getName());
-            }
+    private void addHiddenEntry(Team team, String entry) {
+        if (team == null || entry == null || entry.isEmpty()) {
+            return;
+        }
+
+        if (!team.hasEntry(entry)) {
+            team.addEntry(entry);
         }
     }
 
@@ -574,9 +585,11 @@ public class NpcManager {
         Location location = npc.getEntity().getLocation();
         npc.despawn();
         normalizeSoloNpcName(npc);
+        applyStoredSoloSkin(npc);
         npc.spawn(location);
         if (isSoloNpc(npc)) {
             normalizeSoloNpcName(npc);
+            applyStoredSoloSkin(npc);
             hideNameplate(npc);
         } else if (npc.getEntity() instanceof Villager) {
             Villager villager = (Villager) npc.getEntity();
@@ -624,13 +637,30 @@ public class NpcManager {
         return Class.forName("net.minecraft.server." + version + "." + name);
     }
 
+    private void applyStoredSoloSkin(NPC npc) {
+        if (npc == null || !isSoloNpc(npc)) {
+            return;
+        }
+
+        String skinName = getSkinName(npc);
+        if (skinName == null || skinName.trim().isEmpty()) {
+            return;
+        }
+
+        SkinTrait skinTrait = npc.getOrAddTrait(SkinTrait.class);
+        skinTrait.clearTexture();
+        skinTrait.setShouldUpdateSkins(true);
+        skinTrait.setSkinName(skinName, true);
+    }
+
     private void normalizeSoloNpcName(NPC npc) {
         if (npc == null || !isSoloNpc(npc)) {
             return;
         }
 
-        if (!" ".equals(npc.getName())) {
-            npc.setName(" ");
+        String hiddenName = ChatUtil.color("&r");
+        if (!hiddenName.equals(npc.getName())) {
+            npc.setName(hiddenName);
         }
 
         if (npc.isSpawned() && npc.getEntity() instanceof Player) {

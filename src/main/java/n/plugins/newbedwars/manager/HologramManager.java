@@ -59,7 +59,9 @@ public class HologramManager {
             chestHolograms.put(buildKey(arena, color, "team"), createTwoLineHologram(
                 location,
                 plugin.getConfig().getString("team-chest-hologram.top", "&6&lBAU"),
-                plugin.getConfig().getString("team-chest-hologram.bottom", "&eClique para guardar")
+                plugin.getConfig().getString("team-chest-hologram.bottom", "&eClique para guardar"),
+                plugin.getConfig().getDouble("team-chest-hologram.top-height", 0.45D),
+                plugin.getConfig().getDouble("team-chest-hologram.bottom-height", 0.20D)
             ));
         }
 
@@ -81,8 +83,10 @@ public class HologramManager {
             chestHolograms.put(buildKey(arena, color, "ender"), createTwoLineHologram(
                 location,
                 plugin.getConfig().getString("ender-chest-hologram.top", "&5&lENDER CHEST"),
-                plugin.getConfig().getString("ender-chest-hologram.bottom", "&eClique para abrir"
-            )));
+                plugin.getConfig().getString("ender-chest-hologram.bottom", "&eClique para abrir"),
+                plugin.getConfig().getDouble("ender-chest-hologram.top-height", 0.45D),
+                plugin.getConfig().getDouble("ender-chest-hologram.bottom-height", 0.20D)
+            ));
         }
     }
 
@@ -121,10 +125,10 @@ public class HologramManager {
         return arena.getName().toLowerCase() + ":" + color.name() + ":" + type;
     }
 
-    private NpcHologram createTwoLineHologram(Location location, String top, String bottom) {
+    private NpcHologram createTwoLineHologram(Location location, String top, String bottom, double topHeight, double bottomHeight) {
         NpcHologram hologram = new NpcHologram();
-        hologram.addLine(spawnLine(LocationUtil.topCenter(location).add(0.0D, 0.95D, 0.0D), ChatUtil.color(top)));
-        hologram.addLine(spawnLine(LocationUtil.topCenter(location).add(0.0D, 0.70D, 0.0D), ChatUtil.color(bottom)));
+        hologram.addLine(spawnLine(LocationUtil.topCenter(location).add(0.0D, topHeight, 0.0D), ChatUtil.color(top)));
+        hologram.addLine(spawnLine(LocationUtil.topCenter(location).add(0.0D, bottomHeight, 0.0D), ChatUtil.color(bottom)));
         return hologram;
     }
 

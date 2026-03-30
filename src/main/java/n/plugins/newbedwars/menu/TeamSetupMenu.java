@@ -27,7 +27,7 @@ public class TeamSetupMenu extends BaseMenu {
 
     @Override
     protected String getTitle() {
-        return "\u00A78Time " + color.getDisplayName();
+        return text("menus.team-setup.title", placeholders("team", color.getDisplayName()));
     }
 
     @Override
@@ -38,32 +38,29 @@ public class TeamSetupMenu extends BaseMenu {
     @Override
     protected void draw(Player player) {
         ArenaTeam team = arena.getTeam(color);
-        inventory.setItem(10, action(Material.BEACON, "&bDefinir spawn do time", team.getSpawnLocation() != null));
-        inventory.setItem(11, action(Material.BED, "&cDefinir cama", team.getBedData() != null && team.getBedData().isConfigured()));
-        inventory.setItem(12, action(Material.CHEST, "&6Definir bau do time", team.getTeamChestLocation() != null));
-        inventory.setItem(13, action(Material.ENDER_CHEST, "&5Definir ender chest", team.getEnderChestLocation() != null));
-        inventory.setItem(14, action(Material.IRON_INGOT, "&fDefinir gerador de ferro", !team.getGenerators(GeneratorType.IRON).isEmpty()));
-        inventory.setItem(15, action(Material.GOLD_INGOT, "&6Definir gerador de ouro", !team.getGenerators(GeneratorType.GOLD).isEmpty()));
-        inventory.setItem(16, action(Material.EMERALD, "&eDefinir loja de itens", team.getItemShopLocation() != null));
-        inventory.setItem(19, action(Material.ANVIL, "&bDefinir loja de upgrades", team.getUpgradeShopLocation() != null));
-        inventory.setItem(20, action(Material.GRASS, "&aDefinir regiao da ilha", team.getIslandRegion() != null && team.getIslandRegion().isComplete()));
-        inventory.setItem(21, action(Material.OBSIDIAN, "&5Definir protecao inicial", team.getProtectionRegion() != null && team.getProtectionRegion().isComplete()));
+        inventory.setItem(10, action(Material.BEACON, text("menus.team-setup.items.spawn"), team.getSpawnLocation() != null));
+        inventory.setItem(11, action(Material.BED, text("menus.team-setup.items.bed"), team.getBedData() != null && team.getBedData().isConfigured()));
+        inventory.setItem(12, action(Material.CHEST, text("menus.team-setup.items.chest"), team.getTeamChestLocation() != null));
+        inventory.setItem(13, action(Material.ENDER_CHEST, text("menus.team-setup.items.ender-chest"), team.getEnderChestLocation() != null));
+        inventory.setItem(14, action(Material.IRON_INGOT, text("menus.team-setup.items.iron-generator"), !team.getGenerators(GeneratorType.IRON).isEmpty()));
+        inventory.setItem(15, action(Material.GOLD_INGOT, text("menus.team-setup.items.gold-generator"), !team.getGenerators(GeneratorType.GOLD).isEmpty()));
+        inventory.setItem(16, action(Material.EMERALD, text("menus.team-setup.items.item-shop"), team.getItemShopLocation() != null));
+        inventory.setItem(19, action(Material.ANVIL, text("menus.team-setup.items.upgrade-shop"), team.getUpgradeShopLocation() != null));
+        inventory.setItem(20, action(Material.GRASS, text("menus.team-setup.items.island-region"), team.getIslandRegion() != null && team.getIslandRegion().isComplete()));
+        inventory.setItem(21, action(Material.OBSIDIAN, text("menus.team-setup.items.protection-region"), team.getProtectionRegion() != null && team.getProtectionRegion().isComplete()));
 
         List<String> missing = team.getMissingSetup();
         inventory.setItem(23, new ItemBuilder(Material.PAPER)
-            .name("&fPreview do progresso")
-            .lore(
-                "&7Time: " + color.getColoredName(),
-                "&7Confirmado: " + (team.isConfirmed() ? "\u00A7aSim" : "\u00A7cNao"),
-                "&7Status geral: " + (team.isSetupComplete() ? "\u00A7aCompleto" : "\u00A7cIncompleto"),
-                "&7Faltando: " + (missing.isEmpty() ? "\u00A7aNada" : "\u00A7c" + join(missing)),
-                "",
-                "&eEsquerdo: configurar",
-                "&cDireito: limpar"
-            ).build());
+            .name(text("menus.team-setup.items.progress.name"))
+            .lore(textList("menus.team-setup.items.progress.lore", placeholders(
+                "team", color.getColoredName(),
+                "confirmed", team.isConfirmed() ? text("menus.common.yes") : text("menus.common.no"),
+                "overall_status", team.isSetupComplete() ? text("menus.team-setup.status.complete") : text("menus.team-setup.status.incomplete"),
+                "missing", missing.isEmpty() ? text("menus.team-setup.status.nothing-missing") : text("menus.team-setup.status.missing-prefix") + join(missing)
+            ))).build());
 
-        inventory.setItem(27, new ItemBuilder(Material.ARROW).name("&cVoltar").build());
-        inventory.setItem(35, new ItemBuilder(Material.EMERALD).name("&aConfirmar time").glow().build());
+        inventory.setItem(27, new ItemBuilder(Material.ARROW).name(text("menus.common.back")).build());
+        inventory.setItem(35, new ItemBuilder(Material.EMERALD).name(text("menus.team-setup.items.confirm")).glow().build());
     }
 
     @Override
@@ -130,12 +127,9 @@ public class TeamSetupMenu extends BaseMenu {
     private ItemStack action(Material material, String title, boolean done) {
         return new ItemBuilder(material)
             .name(title)
-            .lore(
-                "&7Status: " + (done ? "\u00A7aConfigurado" : "\u00A7cPendente"),
-                "",
-                "&eClique esquerdo para configurar",
-                "&cClique direito para limpar"
-            ).build();
+            .lore(textList("menus.team-setup.action.lore", placeholders(
+                "status", done ? text("menus.team-setup.status.configured") : text("menus.common.pending")
+            ))).build();
     }
 
     private String join(List<String> list) {

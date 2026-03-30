@@ -28,6 +28,15 @@ settings:
   arena-always-day: true
   arena-clear-weather: true
 
+console:
+  banner:
+    - "&b _   _                 ____          _ __        __             "
+    - "&b| \\ | | _____      __ | __ )  ___  __| |\\ \\      / /_ _ _ __ ___ "
+    - "&b|  \\| |/ _ \\ \\ /\\ / / |  _ \\ / _ \\/ _` | \\ \\ /\\ / / _` | '__/ __|"
+    - "&b| |\\  |  __/\\ V  V /  | |_) |  __/ (_| |  \\ V  V / (_| | |  \\__ \\"
+    - "&b|_| \\_|\\___| \\_/\\_/   |____/ \\___|\\__,_|   \\_/\\_/ \\__,_|_|  |___/"
+    - "&aNewBedWars 1.8.8 carregado com sucesso."
+
 lobby: {}
 
 anti-void: true
@@ -58,8 +67,8 @@ npc:
     internal-name: BedWars1v1
     hologram-top: "&bBedWars - %mode%"
     hologram-bottom: "&e%playing% Jogando!"
-    hologram-top-height: 2.0
-    hologram-bottom-height: 1.74
+    hologram-top-height: 0.92
+    hologram-bottom-height: 0.68
   item-shop:
     hologram-top: "&b&lLOJA"
     hologram-bottom: "&eClique para abrir"
@@ -74,10 +83,14 @@ npc:
 team-chest-hologram:
   top: "&6&lBAU"
   bottom: "&eClique para guardar"
+  top-height: -0.62
+  bottom-height: -0.85
 
 ender-chest-hologram:
   top: "&5&lENDER"
   bottom: "&eClique para abrir"
+  top-height: -0.62
+  bottom-height: -0.85
 
 sound-effects:
   npc-open:
@@ -208,6 +221,16 @@ item-shop:
     slot: -1
     material: "BARRIER"
     name: "&cFechar"
+  quick-access-editor:
+    panel:
+      material: "STAINED_GLASS_PANE"
+      data: 5
+      name: "&aColocar aqui"
+      lore:
+        - "&7Item: &f%item%"
+        - ""
+        - "&eClique para adicionar ao acesso rapido"
+      glow: true
   categories:
     quick-buy:
       slot: 1
@@ -217,6 +240,7 @@ item-shop:
         - "&7Itens favoritos para"
         - "&7comprar sem perder tempo."
       glow: true
+      display-slots: [19, 20, 21, 22, 23, 24, 25, 28, 29, 30, 31, 32, 33, 34, 37, 38, 39, 40, 41, 42, 43]
     blocks:
       slot: 2
       material: "WOOL"
@@ -948,7 +972,7 @@ item-shop:
       name: "&eEstilingue"
       description: "Salto rapido para ataque ou fuga"
       icon:
-        material: "FEATHER"
+        material: "MAGMA_CREAM"
       lore:
         - "&7Te impulsiona para frente."
         - ""
@@ -959,7 +983,7 @@ item-shop:
         material: "IRON_INGOT"
         amount: 24
       reward:
-        material: "FEATHER"
+        material: "MAGMA_CREAM"
         amount: 1
         name: "&eEstilingue"
         special-use: "slingshot"

@@ -20,7 +20,7 @@ public class SetupConfirmMenu extends BaseMenu {
 
     @Override
     protected String getTitle() {
-        return "§8Confirmar " + arena.getName();
+        return text("menus.setup-confirm.title", placeholders("arena", arena.getName()));
     }
 
     @Override
@@ -32,23 +32,20 @@ public class SetupConfirmMenu extends BaseMenu {
     protected void draw(Player player) {
         List<String> issues = arena.validateSetup();
         inventory.setItem(11, new ItemBuilder(Material.WOOL, 1, (short) 5)
-            .name("&aConfirmar")
-            .lore(
-                "&7Valida a arena",
-                "&7e salva o arquivo.",
-                "",
-                issues.isEmpty() ? "&aTudo pronto" : "&cAinda ha pendencias"
-            ).glow().build());
+            .name(text("menus.setup-confirm.confirm.name"))
+            .lore(textList("menus.setup-confirm.confirm.lore", placeholders(
+                "status", issues.isEmpty() ? text("menus.setup-confirm.confirm.ready") : text("menus.setup-confirm.confirm.pending")
+            ))).glow().build());
         inventory.setItem(13, new ItemBuilder(Material.PAPER)
-            .name("&fValidacao")
-            .lore(
-                "&7Arena: &f" + arena.getName(),
-                "&7Pendencias: &f" + issues.size(),
-                issues.isEmpty() ? "&aNenhuma pendencia" : "&cRevise antes de confirmar"
-            ).build());
+            .name(text("menus.setup-confirm.validation.name"))
+            .lore(textList("menus.setup-confirm.validation.lore", placeholders(
+                "arena", arena.getName(),
+                "issues", String.valueOf(issues.size()),
+                "status", issues.isEmpty() ? text("menus.setup-confirm.validation.none") : text("menus.setup-confirm.validation.review")
+            ))).build());
         inventory.setItem(15, new ItemBuilder(Material.WOOL, 1, (short) 14)
-            .name("&cCancelar")
-            .lore("&7Voltar ao menu principal").build());
+            .name(text("menus.setup-confirm.cancel.name"))
+            .lore(textList("menus.setup-confirm.cancel.lore")).build());
     }
 
     @Override

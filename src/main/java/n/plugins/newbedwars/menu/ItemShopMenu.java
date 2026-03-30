@@ -24,7 +24,9 @@ public class ItemShopMenu extends BaseMenu {
 
     private final Map<Integer, Offer> offers;
     private final Map<Integer, String> categorySlots;
+    private final Map<Integer, Integer> quickAccessPanelSlots;
     private final String categoryKey;
+    private final String quickAccessEditItemKey;
 
     private static final class Offer {
         private final String itemKey;
@@ -37,14 +39,22 @@ public class ItemShopMenu extends BaseMenu {
     }
 
     public ItemShopMenu(NewBedWars plugin) {
-        this(plugin, plugin.getConfig().getString("item-shop.default-category", "quick-buy"));
+        this(plugin, plugin.getConfig().getString("item-shop.default-category", "quick-buy"), null);
     }
 
     public ItemShopMenu(NewBedWars plugin, String categoryKey) {
+        this(plugin, categoryKey, null);
+    }
+
+    public ItemShopMenu(NewBedWars plugin, String categoryKey, String quickAccessEditItemKey) {
         super(plugin);
         this.offers = new HashMap<Integer, Offer>();
         this.categorySlots = new HashMap<Integer, String>();
+        this.quickAccessPanelSlots = new HashMap<Integer, Integer>();
         this.categoryKey = categoryKey == null || categoryKey.trim().isEmpty() ? "quick-buy" : categoryKey;
+        this.quickAccessEditItemKey = quickAccessEditItemKey == null || quickAccessEditItemKey.trim().isEmpty()
+            ? null
+            : quickAccessEditItemKey;
     }
 
     @Override
@@ -68,6 +78,7 @@ public class ItemShopMenu extends BaseMenu {
     protected void draw(Player player) {
         offers.clear();
         categorySlots.clear();
+        quickAccessPanelSlots.clear();
         fillBackground();
 
         Arena arena = plugin.getArenaManager().getArenaByPlayer(player.getUniqueId());
@@ -88,6 +99,17 @@ public class ItemShopMenu extends BaseMenu {
             return;
         }
 
+        Integer quickAccessIndex = quickAccessPanelSlots.get(slot);
+        if (quickAccessIndex != null && quickAccessEditItemKey != null) {
+            if (plugin.getShopManager().addQuickAccessItem(player.getUniqueId(), quickAccessEditItemKey, quickAccessIndex.intValue(), getQuickAccessSlots().size())) {
+                plugin.getMessageManager().send(player, "shops.quick-access-added", placeholders(
+                    "item", getOfferDisplayName(quickAccessEditItemKey)
+                ));
+            }
+            new ItemShopMenu(plugin, "quick-buy").open(player);
+            return;
+        }
+
         String selectedCategory = categorySlots.get(slot);
         if (selectedCategory != null) {
             new ItemShopMenu(plugin, selectedCategory).open(player);
@@ -104,6 +126,38 @@ public class ItemShopMenu extends BaseMenu {
         if (arena == null || team == null) {
             player.closeInventory();
             return;
+        }
+
+        if (clickType.isShiftClick()) {
+            if (isQuickBuyCategory() && clickType.isRightClick()) {
+                if (plugin.getShopManager().removeQuickAccessItem(player.getUniqueId(), offer.itemKey, getQuickAccessSlots().size())) {
+                    plugin.getMessageManager().send(player, "shops.quick-access-removed", placeholders(
+                        "item", getOfferDisplayName(offer.itemKey)
+                    ));
+                }
+                new ItemShopMenu(plugin, "quick-buy").open(player);
+                return;
+            }
+
+            if (!isQuickBuyCategory()) {
+                if (plugin.getShopManager().hasQuickAccessItem(player.getUniqueId(), offer.itemKey, getQuickAccessSlots().size())) {
+                    plugin.getMessageManager().send(player, "shops.quick-access-already-added", placeholders(
+                        "item", getOfferDisplayName(offer.itemKey)
+                    ));
+                    return;
+                }
+
+                if (!hasAvailableQuickAccessSlot(player)) {
+                    plugin.getMessageManager().send(player, "shops.quick-access-full");
+                    return;
+                }
+
+                plugin.getMessageManager().send(player, "shops.quick-access-pick-slot", placeholders(
+                    "item", getOfferDisplayName(offer.itemKey)
+                ));
+                new ItemShopMenu(plugin, "quick-buy", offer.itemKey).open(player);
+                return;
+            }
         }
 
         buyConfiguredOffer(player, arena, team, offer.itemKey, offer.section);
@@ -204,6 +258,11 @@ public class ItemShopMenu extends BaseMenu {
     }
 
     private void drawOffers(Player player, Arena arena, ArenaTeam team) {
+        if (isQuickBuyCategory()) {
+            drawQuickAccessOffers(player, arena, team);
+            return;
+        }
+
         ConfigurationSection items = plugin.getConfig().getConfigurationSection("item-shop.items");
         if (items == null) {
             return;
@@ -283,6 +342,33 @@ public class ItemShopMenu extends BaseMenu {
         offers.put(slot, new Offer(offer.itemKey, offer.section));
     }
 
+    private void drawQuickAccessOffers(Player player, Arena arena, ArenaTeam team) {
+        ConfigurationSection items = plugin.getConfig().getConfigurationSection("item-shop.items");
+        if (items == null) {
+            return;
+        }
+
+        List<Integer> quickSlots = getQuickAccessSlots();
+        List<String> layout = plugin.getShopManager().getQuickAccessLayout(player.getUniqueId(), quickSlots.size());
+        for (int index = 0; index < quickSlots.size(); index++) {
+            int slot = quickSlots.get(index).intValue();
+            String itemKey = index < layout.size() ? layout.get(index) : null;
+
+            if (itemKey != null) {
+                ConfigurationSection section = items.getConfigurationSection(itemKey);
+                if (section != null) {
+                    renderOffer(slot, new OfferEntry(itemKey, section, index), player, arena, team);
+                    continue;
+                }
+            }
+
+            if (quickAccessEditItemKey != null && canUseQuickAccessPanel(slot, itemKey)) {
+                inventory.setItem(slot, buildQuickAccessPanelItem());
+                quickAccessPanelSlots.put(Integer.valueOf(slot), Integer.valueOf(index));
+            }
+        }
+    }
+
     private void renderTieredToolOffer(int slot, OfferEntry offer, Player player, Arena arena, ArenaTeam team, String toolType) {
         int currentTier = getCurrentToolTier(arena, player, toolType);
         int nextTier = currentTier + 1;
@@ -333,6 +419,49 @@ public class ItemShopMenu extends BaseMenu {
 
         String targetCategory = section.getString("category", "quick-buy");
         return categoryKey.equalsIgnoreCase(targetCategory);
+    }
+
+    private boolean isQuickBuyCategory() {
+        return "quick-buy".equalsIgnoreCase(categoryKey);
+    }
+
+    private boolean hasAvailableQuickAccessSlot(Player player) {
+        List<Integer> quickSlots = getQuickAccessSlots();
+        List<String> layout = plugin.getShopManager().getQuickAccessLayout(player.getUniqueId(), quickSlots.size());
+        for (int index = 0; index < quickSlots.size(); index++) {
+            String itemKey = index < layout.size() ? layout.get(index) : null;
+            if (canUseQuickAccessPanel(quickSlots.get(index).intValue(), itemKey)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean canUseQuickAccessPanel(int slot, String currentItemKey) {
+        if (currentItemKey != null && !currentItemKey.trim().isEmpty()) {
+            return false;
+        }
+
+        int column = slot % 9;
+        return column != 0 && column != 8;
+    }
+
+    private ItemStack buildQuickAccessPanelItem() {
+        ConfigurationSection section = plugin.getConfig().getConfigurationSection("item-shop.quick-access-editor.panel");
+        String itemName = getOfferDisplayName(quickAccessEditItemKey);
+        String[][] placeholders = new String[][] {
+            {"%item%", itemName}
+        };
+        return section == null
+            ? new ItemBuilder(Material.STAINED_GLASS_PANE, 1, (short) 5).name("&aColocar aqui").lore(
+                java.util.Arrays.asList("&7Item: " + itemName, "", "&eClique para adicionar ao acesso rapido")
+            ).glow().build()
+            : buildItem(section, "STAINED_GLASS_PANE", 5, placeholders);
+    }
+
+    private String getOfferDisplayName(String itemKey) {
+        ConfigurationSection section = plugin.getConfig().getConfigurationSection("item-shop.items." + itemKey);
+        return strip(section == null ? itemKey : section.getString("name", itemKey));
     }
 
     private ItemBuilder buildOfferIcon(ConfigurationSection section, ArenaTeam team, String[] placeholders) {
@@ -519,6 +648,30 @@ public class ItemShopMenu extends BaseMenu {
             valid.add(slot);
         }
         return valid;
+    }
+
+    private List<Integer> getQuickAccessSlots() {
+        List<Integer> configured = plugin.getConfig().getIntegerList("item-shop.categories.quick-buy.display-slots");
+        if (configured == null || configured.isEmpty()) {
+            configured = plugin.getConfig().getIntegerList("item-shop.offer-display-slots");
+        }
+
+        List<Integer> valid = new ArrayList<Integer>();
+        for (Integer slot : configured) {
+            if (slot == null || slot.intValue() < 0 || slot.intValue() >= inventory.getSize()) {
+                continue;
+            }
+            valid.add(slot);
+        }
+        return valid;
+    }
+
+    protected Map<String, String> placeholders(String... values) {
+        Map<String, String> map = new HashMap<String, String>();
+        for (int i = 0; i + 1 < values.length; i += 2) {
+            map.put(values[i], values[i + 1]);
+        }
+        return map;
     }
 
     private short resolveData(ConfigurationSection section, ArenaTeam team) {

@@ -30,7 +30,7 @@ public class TeamSelectorMenu extends BaseMenu {
 
     @Override
     protected String getTitle() {
-        return "\u00A78Escolher Time";
+        return text("menus.team-selector.title");
     }
 
     @Override
@@ -52,7 +52,7 @@ public class TeamSelectorMenu extends BaseMenu {
         }
 
         inventory.setItem(40, new ItemBuilder(Material.BARRIER)
-            .name("&cFechar")
+            .name(text("menus.common.close"))
             .build());
     }
 
@@ -73,13 +73,17 @@ public class TeamSelectorMenu extends BaseMenu {
 
         ItemBuilder builder = new ItemBuilder(Material.WOOL, 1, color.getWoolData())
             .name(color.getChatColor() + "" + org.bukkit.ChatColor.BOLD + color.getDisplayName())
-            .lore(
-                selected ? "&aVoce ja esta neste time." : available ? "&aDisponivel para escolher." : "&cTime cheio.",
-                "&7Jogadores: &f" + members.size() + "&7/&f" + teamSize,
-                "&7Membros: " + join(names),
-                "",
-                selected ? "&eTime atual" : available ? "&eClique para entrar" : "&cIndisponivel"
-            );
+            .lore(textList("menus.team-selector.team.lore", placeholders(
+                "status", selected ? text("menus.team-selector.team.status-selected")
+                    : available ? text("menus.team-selector.team.status-available")
+                    : text("menus.team-selector.team.status-full"),
+                "players", String.valueOf(members.size()),
+                "team_size", String.valueOf(teamSize),
+                "members", join(names),
+                "action", selected ? text("menus.team-selector.team.action-selected")
+                    : available ? text("menus.team-selector.team.action-available")
+                    : text("menus.team-selector.team.action-unavailable")
+            )));
 
         if (selected) {
             builder.glow();

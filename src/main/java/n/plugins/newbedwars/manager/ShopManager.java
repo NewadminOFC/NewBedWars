@@ -1,6 +1,8 @@
 package n.plugins.newbedwars.manager;
 
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
@@ -28,9 +30,127 @@ import org.bukkit.potion.PotionEffectType;
 public class ShopManager {
 
     private final NewBedWars plugin;
+    private final Map<UUID, List<String>> quickAccessLayouts;
 
     public ShopManager(NewBedWars plugin) {
         this.plugin = plugin;
+        this.quickAccessLayouts = new HashMap<UUID, List<String>>();
+    }
+
+    public List<String> getQuickAccessLayout(UUID uniqueId, int size) {
+        return new ArrayList<String>(getOrCreateQuickAccessLayout(uniqueId, size));
+    }
+
+    public boolean hasQuickAccessItem(UUID uniqueId, String itemKey, int size) {
+        if (uniqueId == null || itemKey == null || itemKey.trim().isEmpty()) {
+            return false;
+        }
+
+        return getOrCreateQuickAccessLayout(uniqueId, size).contains(itemKey);
+    }
+
+    public boolean addQuickAccessItem(UUID uniqueId, String itemKey, int index, int size) {
+        if (uniqueId == null || itemKey == null || itemKey.trim().isEmpty() || index < 0) {
+            return false;
+        }
+
+        List<String> layout = getOrCreateQuickAccessLayout(uniqueId, size);
+        if (index >= layout.size()) {
+            return false;
+        }
+
+        String current = layout.get(index);
+        if (current != null && !current.trim().isEmpty() && !itemKey.equalsIgnoreCase(current)) {
+            return false;
+        }
+
+        for (int i = 0; i < layout.size(); i++) {
+            if (itemKey.equalsIgnoreCase(layout.get(i))) {
+                layout.set(i, null);
+            }
+        }
+
+        layout.set(index, itemKey);
+        return true;
+    }
+
+    public boolean removeQuickAccessItem(UUID uniqueId, String itemKey, int size) {
+        if (uniqueId == null || itemKey == null || itemKey.trim().isEmpty()) {
+            return false;
+        }
+
+        List<String> layout = getOrCreateQuickAccessLayout(uniqueId, size);
+        boolean removed = false;
+        for (int i = 0; i < layout.size(); i++) {
+            if (itemKey.equalsIgnoreCase(layout.get(i))) {
+                layout.set(i, null);
+                removed = true;
+            }
+        }
+        return removed;
+    }
+
+    private List<String> getOrCreateQuickAccessLayout(UUID uniqueId, int size) {
+        int normalizedSize = Math.max(0, size);
+        List<String> layout = quickAccessLayouts.get(uniqueId);
+        if (layout == null) {
+            layout = createDefaultQuickAccessLayout(normalizedSize);
+            quickAccessLayouts.put(uniqueId, layout);
+            return layout;
+        }
+
+        while (layout.size() < normalizedSize) {
+            layout.add(null);
+        }
+        while (layout.size() > normalizedSize) {
+            layout.remove(layout.size() - 1);
+        }
+        return layout;
+    }
+
+    private List<String> createDefaultQuickAccessLayout(int size) {
+        List<String> layout = new ArrayList<String>();
+        for (int i = 0; i < size; i++) {
+            layout.add(null);
+        }
+
+        if (size <= 0) {
+            return layout;
+        }
+
+        org.bukkit.configuration.ConfigurationSection items = plugin.getConfig().getConfigurationSection("item-shop.items");
+        if (items == null) {
+            return layout;
+        }
+
+        List<String> defaults = new ArrayList<String>();
+        for (String key : items.getKeys(false)) {
+            org.bukkit.configuration.ConfigurationSection section = items.getConfigurationSection(key);
+            if (section == null || !section.getBoolean("quick-buy", false)) {
+                continue;
+            }
+            defaults.add(key);
+        }
+
+        Collections.sort(defaults, new Comparator<String>() {
+            @Override
+            public int compare(String first, String second) {
+                org.bukkit.configuration.ConfigurationSection firstSection = plugin.getConfig().getConfigurationSection("item-shop.items." + first);
+                org.bukkit.configuration.ConfigurationSection secondSection = plugin.getConfig().getConfigurationSection("item-shop.items." + second);
+                int firstSlot = firstSection == null ? Integer.MAX_VALUE : firstSection.getInt("slot", Integer.MAX_VALUE);
+                int secondSlot = secondSection == null ? Integer.MAX_VALUE : secondSection.getInt("slot", Integer.MAX_VALUE);
+                if (firstSlot != secondSlot) {
+                    return Integer.compare(firstSlot, secondSlot);
+                }
+                return first.compareToIgnoreCase(second);
+            }
+        });
+
+        int limit = Math.min(size, defaults.size());
+        for (int i = 0; i < limit; i++) {
+            layout.set(i, defaults.get(i));
+        }
+        return layout;
     }
 
     public boolean tryBuy(Player player, String itemName, Material currency, int amount, ItemStack... rewards) {
