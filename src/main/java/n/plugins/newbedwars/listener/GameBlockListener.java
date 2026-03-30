@@ -50,6 +50,13 @@ public class GameBlockListener implements Listener {
             return;
         }
 
+        Block against = event.getBlockAgainst();
+        if (against != null && against.getType() == Material.BED_BLOCK && event.getPlayer().isSneaking()) {
+            event.setCancelled(true);
+            tryPlaceBlockOnBed(event.getPlayer(), arena, against);
+            return;
+        }
+
         if (event.getBlockPlaced().getType() == Material.TNT) {
             event.setCancelled(true);
             removeOneFromHand(event.getPlayer());
@@ -123,11 +130,16 @@ public class GameBlockListener implements Listener {
         }
 
         if (event.getAction() == Action.RIGHT_CLICK_BLOCK && block.getType() == Material.BED_BLOCK) {
+            boolean placedOnBed = arena.getState() == ArenaState.INGAME && tryPlaceBlockOnBed(player, arena, block);
             event.setCancelled(true);
             try {
                 event.setUseInteractedBlock(org.bukkit.event.Event.Result.DENY);
                 event.setUseItemInHand(org.bukkit.event.Event.Result.DENY);
             } catch (Throwable ignored) {
+            }
+            if (placedOnBed) {
+                player.updateInventory();
+                return;
             }
             if (arena.getState() != ArenaState.INGAME) {
                 return;
@@ -145,7 +157,6 @@ public class GameBlockListener implements Listener {
         }
 
         if (event.getAction() == Action.RIGHT_CLICK_BLOCK && block.getType() == Material.BED_BLOCK) {
-            tryPlaceBlockOnBed(player, arena, block);
             return;
         }
 

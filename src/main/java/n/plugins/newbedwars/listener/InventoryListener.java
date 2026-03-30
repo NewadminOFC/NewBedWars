@@ -60,8 +60,14 @@ public class InventoryListener implements Listener {
             return;
         }
 
-        if (plugin.getSetupManager().isInSetup(player)
-            || plugin.getGameManager().isRespawning(player.getUniqueId())
+        if (plugin.getSetupManager().isInSetup(player)) {
+            if (!plugin.getSetupManager().isBuildModeEnabled(player) || shouldLockSetupMenuSlot(event, player)) {
+                event.setCancelled(true);
+            }
+            return;
+        }
+
+        if (plugin.getGameManager().isRespawning(player.getUniqueId())
             || isArenaSpectator(player)) {
             event.setCancelled(true);
         }
@@ -119,7 +125,8 @@ public class InventoryListener implements Listener {
         }
 
         Player player = (Player) event.getPlayer();
-        if (isBlockedMerchantView(player, event.getInventory().getType())) {
+        if (isBlockedMerchantView(player, event.getInventory().getType())
+            || isBlockedSetupContainerView(player, event.getInventory())) {
             event.setCancelled(true);
             plugin.getServer().getScheduler().runTask(plugin, new Runnable() {
                 @Override
@@ -373,6 +380,41 @@ public class InventoryListener implements Listener {
 
         Arena arena = plugin.getArenaManager().getArenaByPlayer(player.getUniqueId());
         return plugin.getSetupManager().isInSetup(player) || arena != null;
+    }
+
+    private boolean isBlockedSetupContainerView(Player player, org.bukkit.inventory.Inventory inventory) {
+        if (player == null || !plugin.getSetupManager().isInSetup(player)) {
+            return false;
+        }
+
+        if (inventory == null || inventory.getHolder() instanceof BaseMenu) {
+            return false;
+        }
+
+        InventoryType type = inventory.getType();
+        return type == InventoryType.CHEST || type == InventoryType.ENDER_CHEST;
+    }
+
+    private boolean shouldLockSetupMenuSlot(InventoryClickEvent event, Player player) {
+        if (event == null || player == null) {
+            return false;
+        }
+
+        if (event.getClick() == ClickType.NUMBER_KEY && event.getHotbarButton() == 8) {
+            return true;
+        }
+
+        if (event.getClickedInventory() == player.getInventory() && event.getSlot() == 8) {
+            return true;
+        }
+
+        ItemStack current = event.getCurrentItem();
+        if (current != null && plugin.getSetupManager().isMenuItem(current)) {
+            return true;
+        }
+
+        ItemStack cursor = event.getCursor();
+        return cursor != null && plugin.getSetupManager().isMenuItem(cursor);
     }
 
     private boolean isArenaSpectator(Player player) {

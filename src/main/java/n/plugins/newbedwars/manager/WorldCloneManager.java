@@ -61,6 +61,12 @@ public class WorldCloneManager {
             return false;
         }
 
+        plugin.getSetupManager().clearArenaSetupVisuals(arena);
+        try {
+            baseWorld.save();
+        } catch (Exception ignored) {
+        }
+
         String cloneName = buildCloneName(arena);
         File cloneFolder = new File(getServerRoot(), cloneName);
         if (cloneFolder.exists() && !deleteDirectory(cloneFolder)) {

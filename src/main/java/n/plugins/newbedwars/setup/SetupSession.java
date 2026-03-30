@@ -3,6 +3,7 @@ package n.plugins.newbedwars.setup;
 import java.util.UUID;
 import n.plugins.newbedwars.arena.TeamColor;
 import org.bukkit.Location;
+import org.bukkit.GameMode;
 import org.bukkit.inventory.ItemStack;
 
 public class SetupSession {
@@ -11,7 +12,9 @@ public class SetupSession {
     private final String arenaName;
     private final ItemStack[] originalContents;
     private final ItemStack[] originalArmor;
+    private final GameMode originalGameMode;
     private boolean unlockedMainMenu;
+    private boolean buildModeEnabled;
     private TeamColor selectedTeam;
     private SetupPointAction pendingPointAction;
     private SetupRegionAction pendingRegionAction;
@@ -19,11 +22,12 @@ public class SetupSession {
     private Location selectionPos1;
     private Location selectionPos2;
 
-    public SetupSession(UUID playerId, String arenaName, ItemStack[] originalContents, ItemStack[] originalArmor) {
+    public SetupSession(UUID playerId, String arenaName, ItemStack[] originalContents, ItemStack[] originalArmor, GameMode originalGameMode) {
         this.playerId = playerId;
         this.arenaName = arenaName;
         this.originalContents = originalContents;
         this.originalArmor = originalArmor;
+        this.originalGameMode = originalGameMode;
     }
 
     public UUID getPlayerId() {
@@ -42,12 +46,24 @@ public class SetupSession {
         return originalArmor;
     }
 
+    public GameMode getOriginalGameMode() {
+        return originalGameMode;
+    }
+
     public boolean isUnlockedMainMenu() {
         return unlockedMainMenu;
     }
 
     public void setUnlockedMainMenu(boolean unlockedMainMenu) {
         this.unlockedMainMenu = unlockedMainMenu;
+    }
+
+    public boolean isBuildModeEnabled() {
+        return buildModeEnabled;
+    }
+
+    public void setBuildModeEnabled(boolean buildModeEnabled) {
+        this.buildModeEnabled = buildModeEnabled;
     }
 
     public TeamColor getSelectedTeam() {

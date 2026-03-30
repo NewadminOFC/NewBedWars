@@ -24,6 +24,7 @@ import n.plugins.newbedwars.util.ChatUtil;
 import n.plugins.newbedwars.util.CuboidRegion;
 import n.plugins.newbedwars.util.ItemBuilder;
 import n.plugins.newbedwars.util.LocationUtil;
+import org.bukkit.GameMode;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.World;
@@ -39,6 +40,7 @@ public class SetupManager {
     private static final String POSITION_ONE_ITEM = "\u00A7a/pos1";
     private static final String POSITION_TWO_ITEM = "\u00A7c/pos2";
     private static final String MENU_ITEM = "\u00A7aAbrir menu da arena";
+    private static final int MENU_SLOT = 8;
 
     private final NewBedWars plugin;
     private final Map<UUID, SetupSession> sessions;
@@ -80,13 +82,15 @@ public class SetupManager {
             player.getUniqueId(),
             arena.getName(),
             player.getInventory().getContents().clone(),
-            player.getInventory().getArmorContents().clone()
+            player.getInventory().getArmorContents().clone(),
+            player.getGameMode()
         );
         session.setUnlockedMainMenu(true);
         sessions.put(player.getUniqueId(), session);
 
         player.getInventory().clear();
         player.getInventory().setArmorContents(null);
+        applySessionGameMode(player, session);
         teleportToArena(player, arena);
         giveItems(player, session, arena);
         refreshArenaSetupVisuals(arena);
@@ -104,8 +108,10 @@ public class SetupManager {
         }
 
         player.closeInventory();
+        player.setItemOnCursor(null);
         player.getInventory().setContents(session.getOriginalContents());
         player.getInventory().setArmorContents(session.getOriginalArmor());
+        player.setGameMode(session.getOriginalGameMode());
         player.updateInventory();
 
         Arena arena = plugin.getArenaManager().getConfiguredArena(session.getArenaName());
@@ -133,6 +139,7 @@ public class SetupManager {
             return;
         }
 
+        setBuildModeEnabled(player, false, false);
         session.setSelectedTeam(color);
         session.setPendingPointAction(action);
         session.setPendingRegionAction(null);
@@ -153,6 +160,7 @@ public class SetupManager {
             return;
         }
 
+        setBuildModeEnabled(player, false, false);
         session.setSelectedTeam(null);
         session.setPendingPointAction(action);
         session.setPendingRegionAction(null);
@@ -173,6 +181,7 @@ public class SetupManager {
             return;
         }
 
+        setBuildModeEnabled(player, false, false);
         session.setSelectedTeam(color);
         session.setPendingPointAction(null);
         session.setPendingRegionAction(action);
@@ -191,6 +200,7 @@ public class SetupManager {
             return;
         }
 
+        setBuildModeEnabled(player, false, false);
         session.setSelectedTeam(null);
         session.setPendingPointAction(null);
         session.setPendingRegionAction(action);
@@ -461,6 +471,40 @@ public class SetupManager {
         giveMenuItem(player);
     }
 
+    public boolean isBuildModeEnabled(Player player) {
+        SetupSession session = getSession(player);
+        return session != null && session.isBuildModeEnabled();
+    }
+
+    public void toggleBuildMode(Player player) {
+        SetupSession session = getSession(player);
+        if (session == null) {
+            return;
+        }
+        setBuildModeEnabled(player, !session.isBuildModeEnabled(), true);
+    }
+
+    public void setBuildModeEnabled(Player player, boolean enabled, boolean notify) {
+        SetupSession session = getSession(player);
+        if (player == null || session == null) {
+            return;
+        }
+
+        if (session.isBuildModeEnabled() == enabled) {
+            applySessionGameMode(player, session);
+            prepareSetupMenuInventory(player);
+            return;
+        }
+
+        session.clearPendingActions();
+        session.setBuildModeEnabled(enabled);
+        applySessionGameMode(player, session);
+        prepareSetupMenuInventory(player);
+        if (notify) {
+            plugin.getMessageManager().send(player, enabled ? "setup.build-mode-enabled" : "setup.build-mode-disabled");
+        }
+    }
+
     public boolean canEditNpc(Player player, Arena arena) {
         SetupSession session = getSession(player);
         return session != null && arena != null && session.getArenaName().equalsIgnoreCase(arena.getName());
@@ -651,6 +695,11 @@ public class SetupManager {
             return;
         }
 
+        if (arena.isRuntimeInstance()) {
+            clearArenaSetupVisuals(arena);
+            return;
+        }
+
         String arenaKey = arena.getName().toLowerCase();
         clearArenaHolograms(arenaKey);
         if (!plugin.getConfig().getBoolean("settings.setup-holograms", true) || !hasActiveViewer(arena.getName())) {
@@ -692,9 +741,22 @@ public class SetupManager {
         if (arena == null) {
             return;
         }
-        clearArenaHolograms(arena.getName());
-        if (!arena.getTemplateName().equalsIgnoreCase(arena.getName())) {
-            clearArenaHolograms(arena.getTemplateName());
+
+        String templateKey = arena.getTemplateName() == null ? null : arena.getTemplateName().toLowerCase();
+        String arenaKey = arena.getName() == null ? null : arena.getName().toLowerCase();
+        for (String key : new ArrayList<String>(arenaHolograms.keySet())) {
+            if (key == null) {
+                continue;
+            }
+
+            if (arenaKey != null && key.equalsIgnoreCase(arenaKey)) {
+                clearArenaHolograms(key);
+                continue;
+            }
+
+            if (templateKey != null && (key.equalsIgnoreCase(templateKey) || key.startsWith(templateKey + "__instance_"))) {
+                clearArenaHolograms(key);
+            }
         }
     }
 
@@ -721,14 +783,23 @@ public class SetupManager {
 
     private void giveItems(Player player, SetupSession session, Arena arena) {
         session.setUnlockedMainMenu(true);
+        applySessionGameMode(player, session);
         prepareSetupMenuInventory(player);
     }
 
     private void giveMenuItem(Player player) {
-        player.getInventory().setItem(8, new ItemBuilder(Material.COMPASS)
+        player.getInventory().setItem(MENU_SLOT, new ItemBuilder(Material.COMPASS)
             .name("&aAbrir menu da arena")
             .lore("&7Clique com botao direito", "&7para abrir o setup principal.").build());
         player.updateInventory();
+    }
+
+    private void applySessionGameMode(Player player, SetupSession session) {
+        if (player == null || session == null) {
+            return;
+        }
+
+        player.setGameMode(GameMode.CREATIVE);
     }
 
     private void teleportToArena(Player player, Arena arena) {
@@ -754,6 +825,9 @@ public class SetupManager {
         }
 
         target.getChunk().load();
+        if (isInSetup(player)) {
+            player.setGameMode(GameMode.CREATIVE);
+        }
         player.teleport(target);
         plugin.getServer().getScheduler().runTaskLater(plugin, new Runnable() {
             @Override
@@ -763,6 +837,9 @@ public class SetupManager {
                 }
 
                 target.getChunk().load();
+                if (isInSetup(player)) {
+                    player.setGameMode(GameMode.CREATIVE);
+                }
                 player.teleport(target);
             }
         }, 2L);

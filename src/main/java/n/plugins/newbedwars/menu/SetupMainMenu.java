@@ -91,6 +91,7 @@ public class SetupMainMenu extends BaseMenu {
         inventory.setItem(39, action(Material.EMERALD, "&aGeradores de esmeralda", !arena.getGlobalGenerators(GeneratorType.EMERALD).isEmpty(),
             "&eClique esquerdo para adicionar mais um",
             "&cClique direito para limpar todos"));
+        inventory.setItem(41, buildModeItem(player));
 
         inventory.setItem(43, new ItemBuilder(Material.EMERALD_BLOCK)
             .name("&aFinalizar")
@@ -156,6 +157,12 @@ public class SetupMainMenu extends BaseMenu {
             return;
         }
 
+        if (slot == 41) {
+            player.closeInventory();
+            plugin.getSetupManager().toggleBuildMode(player);
+            return;
+        }
+
         List<TeamColor> activeColors = plugin.getTeamManager().getActiveColors(arena);
         List<Integer> teamSlots = resolveTeamSlots(activeColors.size());
         for (int index = 0; index < teamSlots.size() && index < activeColors.size(); index++) {
@@ -191,6 +198,28 @@ public class SetupMainMenu extends BaseMenu {
             return "\u00A7aY " + (int) rounded;
         }
         return "\u00A7aY " + String.format(java.util.Locale.US, "%.1f", value);
+    }
+
+    private ItemStack buildModeItem(Player player) {
+        boolean enabled = plugin.getSetupManager().isBuildModeEnabled(player);
+        ItemBuilder builder = new ItemBuilder(Material.BRICK)
+            .name("&6Modo build")
+            .lore(
+                "&7Status: " + status(enabled),
+                "",
+                "&7Quando ativo:",
+                "&f- Criativo liberado",
+                "&f- Pode colocar e quebrar blocos",
+                "&f- Nao pode dropar itens",
+                "&f- Nao abre bau nem ender chest",
+                "&f- Ultimo slot fica protegido",
+                "",
+                "&eClique para alternar"
+            );
+        if (enabled) {
+            builder.glow();
+        }
+        return builder.build();
     }
 
     private List<Integer> resolveTeamSlots(int amount) {
