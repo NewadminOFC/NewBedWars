@@ -267,7 +267,7 @@ item-shop:
       quick-buy: true
       slot: 19
       action: "item"
-      name: "&fLa"
+      name: "&fLã"
       description: "16 blocos na cor do time"
       icon:
         material: "WOOL"
@@ -618,7 +618,7 @@ item-shop:
       slot: 40
       action: "item"
       name: "&fTesoura"
-      description: "Quebre la e folhas mais rapido"
+      description: "Quebre lã e folhas mais rapido"
       icon:
         material: "SHEARS"
       lore:
@@ -940,10 +940,36 @@ item-shop:
       reward:
         material: "FIREBALL"
         amount: 1
+    slingshot:
+      category: "utility"
+      quick-buy: false
+      slot: 21
+      action: "item"
+      name: "&eEstilingue"
+      description: "Salto rapido para ataque ou fuga"
+      icon:
+        material: "FEATHER"
+      lore:
+        - "&7Te impulsiona para frente."
+        - ""
+        - "&7Custo: %cost_color%%cost_amount% %cost_name%"
+        - ""
+        - "&eClique para comprar"
+      cost:
+        material: "IRON_INGOT"
+        amount: 24
+      reward:
+        material: "FEATHER"
+        amount: 1
+        name: "&eEstilingue"
+        special-use: "slingshot"
+        forward: 1.35
+        upward: 0.75
+        max-upward: 1.2
     golden-apple:
       category: "utility"
       quick-buy: true
-      slot: 21
+      slot: 22
       action: "item"
       name: "&6Maca Dourada"
       description: "Cura rapida para trocas"
@@ -965,7 +991,7 @@ item-shop:
     ender-pearl:
       category: "utility"
       quick-buy: true
-      slot: 22
+      slot: 23
       action: "item"
       name: "&aPerola do Fim"
       description: "Movimento instantaneo"
@@ -987,7 +1013,7 @@ item-shop:
     bridge-egg:
       category: "utility"
       quick-buy: false
-      slot: 23
+      slot: 24
       action: "item"
       name: "&eOvo das Pontes"
       description: "Cria uma ponte por onde passar"
@@ -1010,7 +1036,7 @@ item-shop:
     bug-bomb:
       category: "utility"
       quick-buy: false
-      slot: 24
+      slot: 25
       action: "item"
       name: "&6Percevejo"
       description: "Invoca uma criatura para distrair inimigos"
@@ -1035,7 +1061,7 @@ item-shop:
     water-bucket:
       category: "utility"
       quick-buy: false
-      slot: 25
+      slot: 28
       action: "item"
       name: "&bBalde de Agua"
       description: "Atrasa inimigos e protege contra TNT"
@@ -1057,7 +1083,7 @@ item-shop:
     iron-golem:
       category: "utility"
       quick-buy: false
-      slot: 28
+      slot: 29
       action: "item"
       name: "&fGolem de Ferro"
       description: "Invoca um golem para defender sua base"
@@ -1244,7 +1270,7 @@ special-blocks:
 
 special-items:
   fireball:
-    cooldown-seconds: 3
+    cooldown-seconds: 1
     speed: 2.75
     yield: 2.2
     incendiary: false

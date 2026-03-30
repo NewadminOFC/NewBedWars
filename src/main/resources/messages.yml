@@ -139,6 +139,17 @@ shops:
   upgrade-tier-purchased: "%prefix%&aSeu time melhorou &f%upgrade% &apara nivel &f%level%&a."
   placeholder: "&7Estrutura base pronta para expansao."
 
+chat:
+  world-format: "&7%player%&7: &f%message%"
+  waiting-format: "&f%player%&7: &f%message%"
+  team-format: "%team% &f%player%&7: &f%message%"
+  global-format: "&a[G] &r%team% &f%player%&7: &f%message%"
+  spectator-format: "&8[&7Espectador&8] &7%player%&7: &f%message%"
+  global-command-usage: "%prefix%&eUse &f/g <mensagem> &epara falar com todos da partida."
+  global-command-only-arena: "%prefix%&cUse o &f/g &capenas dentro de uma arena BedWars."
+  global-command-only-ingame: "%prefix%&cO comando &f/g &cso funciona durante a partida."
+  global-command-spectator-blocked: "%prefix%&cEspectadores nao podem usar &f/g&c. Use o chat dos espectadores ou &f/tell&c."
+
 errors:
   invalid-usage: "%prefix%&cUso incorreto. Tente: &f%usage%"
   invalid-mode: "%prefix%&cModo invalido: &f%mode%&c."

@@ -1,5 +1,6 @@
 package n.plugins.newbedwars.listener;
 
+import java.awt.*;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -59,6 +60,7 @@ public class GameItemListener implements Listener {
     private final List<RecentBlast> recentBlasts = new ArrayList<RecentBlast>();
     private final Map<UUID, FallDamageProtection> fallDamageProtections = new HashMap<UUID, FallDamageProtection>();
     private final Map<UUID, Long> fireballCooldowns = new HashMap<UUID, Long>();
+    private final Map<UUID, Long> slingshotCooldowns = new HashMap<UUID, Long>();
 
     public GameItemListener(NewBedWars plugin) {
         this.plugin = plugin;
@@ -70,7 +72,6 @@ public class GameItemListener implements Listener {
         if (action != Action.RIGHT_CLICK_AIR && action != Action.RIGHT_CLICK_BLOCK) {
             return;
         }
-
         Player player = event.getPlayer();
         Arena arena = plugin.getArenaManager().getArenaByPlayer(player.getUniqueId());
         if (arena == null) {
@@ -105,6 +106,12 @@ public class GameItemListener implements Listener {
             return;
         }
 
+        if ("slingshot".equals(specialUse)) {
+            cancelUse(event);
+            launchSlingshot(player, specialReward);
+            return;
+        }
+
         if ("bug-bomb".equals(specialUse)) {
             cancelUse(event);
             removeOneFromHand(player);
@@ -121,6 +128,7 @@ public class GameItemListener implements Listener {
         if (hand.getType() != Material.FIREBALL) {
             return;
         }
+
 
         cancelUse(event);
         long remainingCooldown = getRemainingFireballCooldownMillis(player.getUniqueId());
@@ -277,6 +285,71 @@ public class GameItemListener implements Listener {
 
         double scaledDamage = event.getDamage() * (maxAllowedFinalDamage / finalDamage);
         event.setDamage(Math.max(0.0D, scaledDamage));
+    }
+
+    private void launchSlingshot(Player player, ConfigurationSection reward) {
+        if (player == null || !player.isOnline()) {
+            return;
+        }
+
+        long remaining = getRemainingSlingshotCooldown(player.getUniqueId());
+        if (remaining > 0L) {
+            return;
+        }
+
+        removeOneFromHand(player);
+
+        double forward = reward == null ? 1.10D : reward.getDouble("forward", 1.10D);
+        double upward = reward == null ? 1.00D : reward.getDouble("upward", 1.00D);
+        double maxY = reward == null ? 1.25D : reward.getDouble("max-upward", 1.25D);
+
+        Vector direction = player.getLocation().getDirection().clone();
+        direction.setY(0.0D);
+
+        if (direction.lengthSquared() <= 0.01D) {
+            direction = new Vector(0.0D, 0.0D, 0.0D);
+        } else {
+            direction.normalize().multiply(forward);
+        }
+
+        Vector velocity = player.getVelocity().clone();
+        velocity.setX(direction.getX());
+        velocity.setZ(direction.getZ());
+        velocity.setY(Math.min(maxY, upward));
+
+        player.setVelocity(velocity);
+        player.setFallDistance(0.0F);
+        player.playSound(player.getLocation(), Sound.ENDERDRAGON_WINGS, 1.0F, 1.2F);
+
+        startSlingshotCooldown(player.getUniqueId());
+    }
+
+    private void startSlingshotCooldown(UUID uuid) {
+        if (uuid == null) {
+            return;
+        }
+
+        slingshotCooldowns.put(uuid, System.currentTimeMillis() + 8000L);
+    }
+
+
+    private long getRemainingSlingshotCooldown(UUID uuid) {
+        if (uuid == null) {
+            return 0L;
+        }
+
+        Long expireAt = slingshotCooldowns.get(uuid);
+        if (expireAt == null) {
+            return 0L;
+        }
+
+        long remaining = expireAt.longValue() - System.currentTimeMillis();
+        if (remaining <= 0L) {
+            slingshotCooldowns.remove(uuid);
+            return 0L;
+        }
+
+        return remaining;
     }
 
     private void cancelUse(PlayerInteractEvent event) {

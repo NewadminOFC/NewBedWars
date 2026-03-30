@@ -256,6 +256,7 @@ Exemplos:
 
 | Comando | Descricao |
 | --- | --- |
+| `/g <mensagem>` | Fala com todos da partida durante o `INGAME` |
 | `/lobby` | Sai da fila ou da partida e volta para o lobby principal |
 
 ### Modos aceitos nos comandos
@@ -394,6 +395,17 @@ Quando o minimo de jogadores e atingido:
 - cada jogador vai para o spawn do seu time
 - a waiting room some visualmente do fluxo da partida
 
+### Chat da partida
+
+O chat do BedWars fica isolado por arena.
+
+Regras:
+
+- no `WAITING` e `STARTING`, o chat normal fala so com quem esta na mesma arena
+- no `INGAME` de modos com time, o chat normal vira chat de time
+- `/g <mensagem>` fala com todos da partida, mas so durante o `INGAME`
+- espectadores usam um chat separado e nao falam no chat normal da partida
+
 ### Regras de mundo da arena
 
 As arenas-template e os clones runtime ficam com:
@@ -498,7 +510,7 @@ A loja atual suporta categorias como:
 
 Entre os itens ja presentes na base estao:
 
-- la, madeira, vidro anti-explosao e outros blocos
+- lã, madeira, vidro anti-explosao e outros blocos
 - espadas e armaduras
 - picaretas com sistema de evolucao
 - machados com sistema de evolucao
@@ -509,6 +521,7 @@ Entre os itens ja presentes na base estao:
 - maca dourada
 - balde de agua
 - golem de ferro
+- estilingue
 - ovo das pontes
 - percevejo
 - pocoes de agilidade, super pulo e invisibilidade

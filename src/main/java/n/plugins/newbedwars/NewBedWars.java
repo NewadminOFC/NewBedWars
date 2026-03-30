@@ -1,7 +1,9 @@
 package n.plugins.newbedwars;
 
 import n.plugins.newbedwars.command.BedWarsCommand;
+import n.plugins.newbedwars.command.GlobalChatCommand;
 import n.plugins.newbedwars.command.LobbyCommand;
+import n.plugins.newbedwars.listener.ChatListener;
 import n.plugins.newbedwars.listener.CombatListener;
 import n.plugins.newbedwars.listener.GameBlockListener;
 import n.plugins.newbedwars.listener.GameItemListener;
@@ -10,6 +12,7 @@ import n.plugins.newbedwars.listener.InventoryListener;
 import n.plugins.newbedwars.listener.NpcListener;
 import n.plugins.newbedwars.listener.SetupInteractListener;
 import n.plugins.newbedwars.manager.ArenaManager;
+import n.plugins.newbedwars.manager.ChatManager;
 import n.plugins.newbedwars.manager.GameManager;
 import n.plugins.newbedwars.manager.GeneratorManager;
 import n.plugins.newbedwars.manager.HologramManager;
@@ -30,6 +33,7 @@ public final class NewBedWars extends JavaPlugin {
     private MessageManager messageManager;
     private ArenaManager arenaManager;
     private TeamManager teamManager;
+    private ChatManager chatManager;
     private SetupManager setupManager;
     private MenuManager menuManager;
     private GameManager gameManager;
@@ -52,6 +56,7 @@ public final class NewBedWars extends JavaPlugin {
 
         this.messageManager = new MessageManager(this);
         this.teamManager = new TeamManager(this);
+        this.chatManager = new ChatManager(this);
         this.arenaManager = new ArenaManager(this);
         this.setupManager = new SetupManager(this);
         this.menuManager = new MenuManager(this);
@@ -119,9 +124,11 @@ public final class NewBedWars extends JavaPlugin {
         getCommand("bw").setExecutor(bedWarsCommand);
         getCommand("bw").setTabCompleter(bedWarsCommand);
         getCommand("lobby").setExecutor(new LobbyCommand(this));
+        getCommand("g").setExecutor(new GlobalChatCommand(this));
     }
 
     private void registerListeners() {
+        Bukkit.getPluginManager().registerEvents(new ChatListener(this), this);
         Bukkit.getPluginManager().registerEvents(new InventoryListener(this), this);
         Bukkit.getPluginManager().registerEvents(new SetupInteractListener(this), this);
         Bukkit.getPluginManager().registerEvents(new CombatListener(this), this);
@@ -163,6 +170,10 @@ public final class NewBedWars extends JavaPlugin {
 
     public TeamManager getTeamManager() {
         return teamManager;
+    }
+
+    public ChatManager getChatManager() {
+        return chatManager;
     }
 
     public SetupManager getSetupManager() {

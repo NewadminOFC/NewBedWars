@@ -1,14 +1,20 @@
 name: NewBedWars
 version: '${project.version}'
 main: n.plugins.newbedwars.NewBedWars
-author: NewadminOFC
-description: BedWars 1.8.8 com setup completo in-game e varios modos
+authors:
+  - NewAdmin
+  - Kuro
+description: NewBW sistema com interface simples com menus para facilitar o setup do bw
 depend: [Citizens]
 commands:
   bw:
     description: Comando principal do BedWars
     usage: /bw
     aliases: [bedwars]
+  g:
+    description: Fala globalmente com todos da arena atual
+    usage: /g <mensagem>
+    aliases: [global]
   lobby:
     description: Volta para o lobby principal
     usage: /lobby

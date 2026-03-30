@@ -44,8 +44,23 @@ public class MessageManager {
     }
 
     public String get(String path) {
-        String text = configuration.getString(path, path);
-        return ChatUtil.color(text.replace("%prefix%", ChatUtil.color(configuration.getString("prefix", ""))));
+        String text = configuration.getString(path);
+        if (text == null && configuration.getDefaults() != null) {
+            text = configuration.getDefaults().getString(path);
+        }
+        if (text == null) {
+            text = path;
+        }
+
+        String prefix = configuration.getString("prefix");
+        if (prefix == null && configuration.getDefaults() != null) {
+            prefix = configuration.getDefaults().getString("prefix", "");
+        }
+        if (prefix == null) {
+            prefix = "";
+        }
+
+        return ChatUtil.color(text.replace("%prefix%", ChatUtil.color(prefix)));
     }
 
     public String get(String path, Map<String, String> placeholders) {
