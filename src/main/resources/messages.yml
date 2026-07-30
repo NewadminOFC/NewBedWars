@@ -1,0 +1,398 @@
+messages-version: 3
+prefix: "&8[&b&lNEW&f&lBEDWARS&8] &r"
+
+general:
+  no-permission: "%prefix%&cVocê não tem permissão para fazer isso."
+  player-only: "%prefix%&cEste comando só pode ser usado por jogadores."
+  arena-not-found: "%prefix%&cA arena &f%arena%&c nao existe."
+  arena-exists: "%prefix%&cJa existe uma arena com este nome."
+  invalid-world: "%prefix%&cO mundo informado nao existe."
+  arena-created: "%prefix%&aArena &f%arena% &acriada com sucesso no modo &f%mode%&a."
+  arena-deleted: "%prefix%&aArena &f%arena% &aremovida com sucesso."
+  arena-list-header: "&8&m--------------------------------"
+  arena-list-entry: "&b%arena% &7- &f%mode% &7- &f%state% &7- &f%ready%"
+  arena-list-empty: "%prefix%&cNenhuma arena cadastrada."
+  mode-updated: "%prefix%&aArena &f%arena% &aatualizada para o modo &f%mode%&a."
+  reloaded: "%prefix%&a✔ Configurações recarregadas com segurança."
+  reload-blocked: "%prefix%&e⚠ Finalize partidas e sessões de setup antes de recarregar."
+  already-in-arena: "%prefix%&cVocê já está em uma arena."
+  not-in-arena: "%prefix%&cVocê não está em uma arena."
+
+lobby:
+  set: "%prefix%&aLobby principal salvo com sucesso."
+  teleported: "%prefix%&aVoce foi teleportado para o lobby."
+  not-set: "%prefix%&cO lobby principal ainda nao foi configurado."
+
+setup:
+  session-started: "%prefix%&aModo setup iniciado para a arena &f%arena%&a."
+  session-ended: "%prefix%&eModo setup finalizado."
+  waiting-spawn-saved: "%prefix%&aSpawn de espera salvo."
+  waiting-pos1-set: "%prefix%&aPosicao 1 da sala de espera definida."
+  waiting-pos2-set: "%prefix%&aPosicao 2 da sala de espera definida."
+  waiting-area-complete: "%prefix%&aSala de espera configurada. O menu principal foi liberado."
+  open-menu: "%prefix%&eUse a bussola para abrir o menu do setup. Os itens de configuracao vao aparecer so quando voce escolher cada etapa."
+  pos-tools-help: "%prefix%&7Os itens &a/pos1 &7e &c/pos2 &7servem para marcar os dois cantos de regioes como sala de espera, ilha e protecao."
+  menu-unlocked: "%prefix%&aMenu principal da arena liberado."
+  build-mode-enabled: "%prefix%&aModo build ativado. Agora voce pode construir e quebrar blocos no setup."
+  build-mode-disabled: "%prefix%&eModo build desativado. O setup voltou para o modo protegido."
+  build-storage-blocked: "%prefix%&cDurante o setup voce nao pode abrir bau nem ender chest."
+  select-block: "%prefix%&eClique no bloco desejado para definir &f%action%&e."
+  select-spawn-block: "%prefix%&eClique no bloco desejado para definir &f%action%&e. O spawn sera salvo em cima dele."
+  select-location: "%prefix%&eVa ate o local e clique com botao direito para definir &f%action%&e."
+  region-selection-started: "%prefix%&eVa ate o inicio e o fim da regiao e use os itens &f/pos1 &ee &f/pos2 &epara definir &f%action%&e."
+  region-tool-reminder: "%prefix%&7Dica: use o &a/pos1 &7no primeiro canto e o &c/pos2 &7no segundo canto da regiao."
+  region-not-selected: "%prefix%&cEscolha primeiro no menu qual regiao voce quer marcar. Depois use os itens &a/pos1 &7e &c/pos2&c."
+  selection-pos1: "%prefix%&aPosicao 1 definida para &f%action%&a."
+  selection-pos2: "%prefix%&aPosicao 2 definida para &f%action%&a."
+  selection-complete: "%prefix%&aRegiao de &f%action% &asalva com sucesso."
+  point-saved: "%prefix%&a%action% salvo com sucesso."
+  cleared: "%prefix%&e%action% foi limpo e pode ser configurado novamente."
+  nothing-to-clear: "%prefix%&cNada configurado em &f%action%&c para limpar."
+  invalid-bed: "%prefix%&cVoce precisa clicar em uma cama para salvar esta etapa."
+  invalid-team-chest: "%prefix%&cVoce precisa clicar em um bau normal para salvar esta etapa."
+  invalid-ender-chest: "%prefix%&cVoce precisa clicar em um ender chest para salvar esta etapa."
+  team-confirmed: "%prefix%&aTime %team% &aconfirmado."
+  team-invalid: "%prefix%&cEste time ainda possui campos pendentes."
+  arena-ready: "%prefix%&aArena &f%arena% &afoi validada e marcada como pronta."
+  arena-invalid: "%prefix%&cA arena ainda nao esta pronta:"
+  arena-invalid-entry: "&8- &f%issue%"
+  npc-removed: "%prefix%&eNPC de &f%type% &eremovido do time %team%&e."
+  already-setting-up: "%prefix%&eVoce ja esta configurando esta arena."
+  changed-team-setting: "%prefix%&eO time %team% foi marcado como pendente novamente."
+
+game:
+  joined: "%prefix%&a✔ Você entrou na arena &f%arena%&a."
+  joined-waiting: "%prefix%&a✔ Você entrou na arena &f%arena%&a."
+  left: "%prefix%&eVocê saiu da arena."
+  join-broadcast: "&8[&a+&8] &f%player% &7entrou &8• &b%players%&7/&b%max_players%"
+  leave-broadcast: "&8[&c-&8] &f%player% &7saiu &8• &b%players%&7/&b%max_players%"
+  leave-ingame-broadcast: "&8[&c-&8] &f%player% &7abandonou a partida e perdeu a cama."
+  arena-not-ready: "%prefix%&cEsta arena ainda nao esta pronta para uso."
+  arena-full: "%prefix%&cEsta arena esta lotada."
+  arena-running: "%prefix%&cA partida desta arena ja comecou."
+  countdown: "&8» &eA partida começa em &6&l%seconds% &esegundos."
+  countdown-cancelled: "%prefix%&c✘ Contagem cancelada: faltam jogadores."
+  game-started: "&8&m━━━━━━━━━━━━ &b&lNEW&f&lBEDWARS &8&m━━━━━━━━━━━━ &aPartida iniciada! &7Proteja sua cama e elimine os adversários."
+  team-assigned: "%prefix%&aVoce foi enviado para o time %team%&a."
+  team-selector-selected: "%prefix%&aVoce escolheu o time %team%&a."
+  team-selector-already: "%prefix%&eVoce ja esta no time %team%&e."
+  team-selector-occupied: "%prefix%&cO time %team% &cja esta cheio."
+  bed-destroyed: "%prefix%&cA cama do time %team% &cfoi destruida por &f%player%&c."
+  your-bed-destroyed: "%prefix%&cSua cama foi destruida. Agora voce esta em morte final."
+  kill: "%victim_colored% &fmorreu para %killer_colored%&f."
+  final-kill: "%victim_colored% &fmorreu para %killer_colored%&f. &bABATE FINAL!"
+  kill-void: "%victim_colored% &fmorreu para o &5Void&f."
+  final-kill-void: "%victim_colored% &fmorreu para o &5Void&f. &bABATE FINAL!"
+  kill-generic: "%victim_colored% &fmorreu."
+  final-kill-generic: "%victim_colored% &fmorreu. &bABATE FINAL!"
+  team-eliminated: "&8&m──────── &b&lTIME ELIMINADO &8&m──────── &7%team% &7está fora da partida."
+  death-respawn: "%prefix%&aVoce vai respawnar porque sua cama ainda existe."
+  death-final: "%prefix%&cVoce foi eliminado."
+  winner: "%prefix%&aO time %team% &avenceu a arena &f%arena%&a."
+  draw: "%prefix%&eA partida terminou sem vencedor."
+  victory-summary-header: "&8&m━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  victory-summary-title: "          &b&lBED&f&lWARS"
+  victory-summary-winner: " &6★ &eVencedor: &f%winner%"
+  victory-summary-empty: " &81. &7Nenhum abate final"
+  victory-summary-entry: " &e%position% &f%player% &8• &b%kills% &7abates finais"
+  victory-summary-footer: "&8&m━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  spectator: "%prefix%&7Voce agora e um espectador."
+  not-enough-players: "%prefix%&cJogadores insuficientes para iniciar."
+  no-arena-available: "%prefix%&cNenhuma arena %mode% disponivel no momento."
+  start-no-arena-world: "%prefix%&cNenhuma arena BedWars foi encontrada neste mundo."
+  start-accelerated: "%prefix%&aA partida da arena &f%arena% &avai iniciar mais rapido."
+  clone-preparing: "%prefix%&bPreparando uma instância limpa e otimizada do mapa..."
+  clone-prepare-failed: "%prefix%&c✘ Não foi possível preparar o mapa. Tente novamente."
+  clone-join-cancelled: "%prefix%&eEntrada cancelada; nenhuma alteração foi feita no jogador."
+  respawn-countdown-chat: "%prefix%&aRespawn em &f%seconds%s&a."
+
+titles:
+  game:
+    countdown:
+      title: "&e&l%seconds%"
+      subtitle: "&fA partida vai comecar"
+    start:
+      title: "&a&lPARTIDA INICIADA"
+      subtitle: "&fTime: %team%"
+    bed-destroyed:
+      title: "&c&lSUA CAMA FOI DESTRUIDA!"
+      subtitle: "&7Agora voce esta em morte final."
+    bed-break:
+      title: "&a&lCAMA DESTRUIDA!"
+      subtitle: "&f%team%"
+    respawn-countdown:
+      title: "&c&lVOCE MORREU"
+      subtitle: "&fRespawn em &e%seconds%s"
+    respawned:
+      title: "&a&lRESPAWN"
+      subtitle: "&fVoce voltou para %team%"
+    final-death:
+      title: "&4&lELIMINADO"
+      subtitle: "&7Voce agora e espectador."
+    win:
+      title: "&a&lVITORIA!"
+      subtitle: "&fSeu time venceu a partida."
+    lose:
+      title: "&c&lDERROTA!"
+      subtitle: "&fVencedor: %team%"
+    draw:
+      title: "&e&lEMPATE"
+      subtitle: "&fA partida terminou sem vencedor."
+
+npc:
+  created: "%prefix%&aNPC %mode% criado com sucesso. &7ID: &f%id% &7Skin: &f%skin%"
+  skin-updated: "%prefix%&aSkin do NPC &f%id% &aatualizada para &f%skin%&a."
+  removed: "%prefix%&eNPC &f%id% &eremovido."
+  invalid-id: "%prefix%&cNPC invalido ou nao pertence ao BedWars."
+
+shops:
+  items-title: "&8Loja de Itens"
+  upgrades-title: "&8Loja de Melhorias"
+  need-currency: "%prefix%&cVoce precisa de &f%amount% %currency%&c."
+  buy-success: "%prefix%&aVoce comprou &f%item%&a."
+  fireball-cooldown: "%prefix%&cEspere &f%seconds%s &cpara usar outra fireball."
+  quick-access-pick-slot: "%prefix%&eEscolha um painel de vidro para colocar &f%item% &eno acesso rapido."
+  quick-access-added: "%prefix%&a%item% &afoi adicionado ao acesso rapido."
+  quick-access-removed: "%prefix%&e%item% &efoi removido do acesso rapido."
+  quick-access-full: "%prefix%&cSeu acesso rapido ja esta cheio."
+  quick-access-already-added: "%prefix%&eEsse item ja esta no acesso rapido."
+  sword-already-better: "%prefix%&cVoce ja possui essa espada ou uma melhor."
+  armor-already-better: "%prefix%&cVoce ja possui essa armadura ou uma melhor."
+  pickaxe-already-maxed: "%prefix%&cSua picareta ja esta no maximo."
+  axe-already-maxed: "%prefix%&cSeu machado ja esta no maximo."
+  upgrade-already-owned: "%prefix%&cSeu time ja possui &f%upgrade%&c."
+  upgrade-maxed: "%prefix%&c%upgrade% &cja esta no maximo."
+  upgrade-purchased: "%prefix%&aSeu time comprou &f%upgrade%&a."
+  upgrade-tier-purchased: "%prefix%&aSeu time melhorou &f%upgrade% &apara nivel &f%level%&a."
+  placeholder: "&7Estrutura base pronta para expansao."
+
+chat:
+  world-format: "&8[&bMUNDO&8] &f%player% &8» &7%message%"
+  waiting-format: "&8[&eSALA&8] &f%player% &8» &7%message%"
+  team-format: "&8[&aTIME&8] %team% &f%player% &8» &f%message%"
+  global-format: "&8[&cGLOBAL&8] %team% &f%player% &8» &f%message%"
+  spectator-format: "&8[&7ESPECTADOR&8] &7%player% &8» &7%message%"
+  global-command-usage: "%prefix%&eUse &f/g <mensagem> &epara falar com todos da partida."
+  global-command-only-arena: "%prefix%&cUse o &f/g &capenas dentro de uma arena BedWars."
+  global-command-only-ingame: "%prefix%&cO comando &f/g &cso funciona durante a partida."
+  global-command-spectator-blocked: "%prefix%&cEspectadores nao podem usar &f/g&c. Use o chat dos espectadores ou &f/tell&c."
+
+errors:
+  invalid-usage: "%prefix%&cUso incorreto. Tente: &f%usage%"
+  invalid-mode: "%prefix%&cModo invalido: &f%mode%&c."
+
+commands:
+  help:
+    - "&8&m--------------------------------"
+    - "&b/bw create <arena> [world] [mode] &7- cria uma arena"
+    - "&b/bw delete <arena> &7- remove uma arena"
+    - "&b/bw list &7- lista as arenas"
+    - "&b/bw mode <arena> <mode> &7- altera o modo da arena"
+    - "&b/bw setup <arena> &7- entra no setup"
+    - "&b/bw setlobby &7- salva o lobby principal"
+    - "&b/bw join <arena> &7- entra em uma partida"
+    - "&b/bw leave &7- sai da partida"
+    - "&b/bw npc <mode> <skin-name> &7- cria um NPC de fila"
+    - "&b/bw npc skin <id> <skin> &7- altera a skin do NPC"
+    - "&b/bw npc remove <id> &7- remove um NPC"
+    - "&b/lobby &7- volta para o lobby"
+    - "&b/bw reload &7- recarrega os arquivos"
+    - "&8&m--------------------------------"
+
+menus:
+  common:
+    back: "&cVoltar"
+    back-green: "&aVoltar"
+    close: "&cFechar"
+    yes: "&aSim"
+    no: "&cNao"
+    ok: "&aOK"
+    pending: "&cPendente"
+    left-configure: "&eClique esquerdo para configurar"
+    right-clear: "&cClique direito para limpar"
+  queue:
+    title: "&8NewBedWars - %mode%"
+    quick-join:
+      name: "&eJogo rapido"
+      lore:
+        - "&7Clique para entrar em um mapa"
+        - "&7aleatorio."
+        - ""
+        - "&eClique para entrar"
+    selector:
+      name: "&aEscolha um mapa"
+      lore:
+        - "&7Escolha um mapa especifico."
+        - ""
+        - "&eClique para abrir"
+  arena-selector:
+    title: "&8Selecionar Arena - %mode%"
+    empty:
+      name: "&cNenhuma arena disponivel"
+      lore:
+        - "&7Crie e valide arenas do modo &f%mode%&7 para aparecer aqui."
+    entry:
+      name: "&b%arena%"
+      lore:
+        - "&7Modo: &f%mode%"
+        - "&7Mundo base: &f%world%"
+        - "&7Jogando neste mapa: &f%players_on_map%"
+        - "&7Instancias abertas: &f%open_instances%"
+        - "&7Maximo: &f%max_players%"
+        - "&7Pronta: %ready%"
+        - ""
+        - "&eClique para entrar"
+  setup-main:
+    title: "&8Setup %arena%"
+    info:
+      name: "&bArena: &f%arena%"
+      lore:
+        - "&7Modo: &f%mode%"
+        - "&7Times ativos: &f%active_teams%"
+        - "&7Jogadores por time: &f%team_size%"
+        - "&7Maximo: &f%max_players%"
+        - "&7Spawn de espera: %waiting_spawn_status%"
+        - "&7Area de espera: %waiting_area_status%"
+        - "&7Anti-void: %anti_void_status%"
+        - "&7Diamante: &f%diamond_count%"
+        - "&7Esmeralda: &f%emerald_count%"
+        - "&7Pronta: %ready_status%"
+      anti-void-value: "&aY %value%"
+    action:
+      lore:
+        - "&7Status: %status%"
+        - ""
+        - "%left_click%"
+        - "%right_click%"
+    items:
+      waiting-spawn: "&bSpawn de espera"
+      waiting-area: "&eArea de espera"
+      waiting-area-left: "&eClique esquerdo para marcar /pos1 e /pos2"
+      anti-void: "&cAnti-void"
+      anti-void-left: "&eClique esquerdo para salvar o Y atual"
+      mode:
+        name: "&fModo da arena"
+        lore:
+          - "&7Atual: &b%mode%"
+          - "&7Use: &f/bw mode %arena% <modo>"
+          - "&7Modos: &f1v1, 2v2, 3v3, 4v4"
+          - "&7       &fsolo, dupla, trio, quarteto"
+      team:
+        lore:
+          - "&7Status: %status%"
+          - "&7Confirmado: %confirmed%"
+          - "&7%progress%"
+          - ""
+          - "&eClique para configurar o time"
+      diamond-generators: "&bGeradores de diamante"
+      emerald-generators: "&aGeradores de esmeralda"
+      generator-left: "&eClique esquerdo para adicionar mais um"
+      generator-right: "&cClique direito para limpar todos"
+      build-mode:
+        name: "&6Modo build"
+        lore:
+          - "&7Status: %status%"
+          - ""
+          - "&7Quando ativo:"
+          - "&f- Criativo liberado"
+          - "&f- Pode colocar e quebrar blocos"
+          - "&f- Nao pode dropar itens"
+          - "&f- Nao abre bau nem ender chest"
+          - "&f- Ultimo slot fica protegido"
+          - ""
+          - "&eClique para alternar"
+      finish:
+        name: "&aFinalizar"
+        lore:
+          - "&7Modo: &f%mode%"
+          - "&7Times ativos: &f%active_teams%"
+          - "&7Valida toda a arena"
+          - "&7e marca como pronta."
+          - ""
+          - "&eClique para continuar"
+  team-setup:
+    title: "&8Time %team%"
+    items:
+      spawn: "&bDefinir spawn do time"
+      bed: "&cDefinir cama"
+      chest: "&6Definir bau do time"
+      ender-chest: "&5Definir ender chest"
+      iron-generator: "&fDefinir gerador de ferro"
+      gold-generator: "&6Definir gerador de ouro"
+      item-shop: "&eDefinir loja de itens"
+      upgrade-shop: "&bDefinir loja de upgrades"
+      island-region: "&aDefinir regiao da ilha"
+      protection-region: "&5Definir protecao inicial"
+      progress:
+        name: "&fPreview do progresso"
+        lore:
+          - "&7Time: %team%"
+          - "&7Confirmado: %confirmed%"
+          - "&7Status geral: %overall_status%"
+          - "&7Faltando: %missing%"
+          - ""
+          - "&eEsquerdo: configurar"
+          - "&cDireito: limpar"
+      confirm: "&aConfirmar time"
+    action:
+      lore:
+        - "&7Status: %status%"
+        - ""
+        - "&eClique esquerdo para configurar"
+        - "&cClique direito para limpar"
+    status:
+      configured: "&aConfigurado"
+      complete: "&aCompleto"
+      incomplete: "&cIncompleto"
+      nothing-missing: "&aNada"
+      missing-prefix: "&c"
+  setup-confirm:
+    title: "&8Confirmar %arena%"
+    confirm:
+      name: "&aConfirmar"
+      lore:
+        - "&7Valida a arena"
+        - "&7e salva o arquivo."
+        - ""
+        - "%status%"
+      ready: "&aTudo pronto"
+      pending: "&cAinda ha pendencias"
+    validation:
+      name: "&fValidacao"
+      lore:
+        - "&7Arena: &f%arena%"
+        - "&7Pendencias: &f%issues%"
+        - "%status%"
+      none: "&aNenhuma pendencia"
+      review: "&cRevise antes de confirmar"
+    cancel:
+      name: "&cCancelar"
+      lore:
+        - "&7Voltar ao menu principal"
+  setup-npc:
+    title: "&8NPC %type%"
+    remove:
+      name: "&cRemover NPC"
+      lore:
+        - "&7Remove o NPC de %type%"
+        - "&7do time %team%"
+        - ""
+        - "&eClique para remover"
+    back:
+      lore:
+        - "&7Retorna para o setup do time"
+  team-selector:
+    title: "&8Escolher Time"
+    team:
+      lore:
+        - "%status%"
+        - "&7Jogadores: &f%players%&7/&f%team_size%"
+        - "&7Membros: %members%"
+        - ""
+        - "%action%"
+      status-selected: "&aVoce ja esta neste time."
+      status-available: "&aDisponivel para escolher."
+      status-full: "&cTime cheio."
+      action-selected: "&eTime atual"
+      action-available: "&eClique para entrar"
+      action-unavailable: "&cIndisponivel"

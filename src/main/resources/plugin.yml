@@ -1,0 +1,27 @@
+name: NewBedWars
+version: '1.3.1'
+main: n.plugins.newbedwars.NewBedWars
+authors:
+  - NewAdmin
+  - Kuro
+description: BedWars com arenas isoladas, setup por menus e interface moderna
+depend: [Citizens]
+commands:
+  bw:
+    description: Comando principal do BedWars
+    usage: /bw
+    aliases: [bedwars]
+  g:
+    description: Fala globalmente com todos da arena atual
+    usage: /g <mensagem>
+    aliases: [global]
+  lobby:
+    description: Volta para o lobby principal
+    usage: /lobby
+permissions:
+  newbedwars.admin:
+    description: Permite administrar arenas BedWars
+    default: op
+  newbedwars.teamselect:
+    description: Permite escolher a cor do time no lobby de espera
+    default: op
